@@ -7,7 +7,7 @@ Wars 2 API.
 Usage
 -----
 
-See GW2API.pod for full documentation.
+See [GW2API.pod](blob/master/GW2API.pod) for full documentation.
 
 Prerequisites
 -------------
