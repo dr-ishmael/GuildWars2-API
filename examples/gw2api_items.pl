@@ -1,13 +1,5 @@
 #!perl -w
 
-BEGIN { push @INC, '.'; $| = 1; }
-
-my $old_warn_handler = $SIG{__WARN__};
-$SIG{__WARN__} = sub {
-    $old_warn_handler->(@_) if $old_warn_handler;
-    die @_;
-};
-
 use strict;
 
 use List::MoreUtils qw/any/;
@@ -98,7 +90,7 @@ if ($mode eq ">") {
   print OKEYS "item_id|key|subkey\n";
 }
 
-my $api = GW2API->new( cache_dir => './cached' );
+my $api = GW2API->new;
 
 my $i = 0;
 foreach my $item_id ($api->items()) {

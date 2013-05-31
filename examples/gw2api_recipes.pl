@@ -1,18 +1,10 @@
 #!perl -w
 
-BEGIN { push @INC, '.'; $| = 1; }
-
-my $old_warn_handler = $SIG{__WARN__};
-$SIG{__WARN__} = sub {
-    $old_warn_handler->(@_) if $old_warn_handler;
-    die @_;
-};
-
 use strict;
 
 use GW2API;
 
-my $api = GW2API->new( cache_dir => './cached' );
+my $api = GW2API->new;
 
 my $mode = ">>";
 my @prior_ids = ();

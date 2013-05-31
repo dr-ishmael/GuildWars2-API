@@ -1,30 +1,14 @@
 #!perl -w
 
-BEGIN { push @INC, '.'; $| = 1; }
-
-my $old_warn_handler = $SIG{__WARN__};
-$SIG{__WARN__} = sub {
-    $old_warn_handler->(@_) if $old_warn_handler;
-    die @_;
-};
-
 use strict;
 
 use GW2API;
 
-my $api = GW2API->new( cache_dir => './cached' );
+my $api = GW2API->new;
 
-my $mode = ">>";
+open(OMAIN, ">world_names.csv") or die "unable to open file: $!\n";
 
-if (defined($ARGV[0]) && $ARGV[0] eq "clean") {
-  $mode = ">";
-}
-
-open(OMAIN, $mode, "world_names.csv") or die "unable to open file: $!\n";
-
-if ($mode eq ">") {
-  print OMAIN "world_id|name\n";
-}
+print OMAIN "world_id|name\n";
 
 my %worlds = $api->world_names();
 
