@@ -151,10 +151,12 @@ Returns an array containing basic information on the current WvW matches. Each
 array element is a hash with the following structure:
 
  (
-   wvw_match_id   => [STR],  # Match ID
-   red_world_id   => [INT],  # World ID of the red world
-   blue_world_id  => [INT],  # World ID of the blue world
-   green_world_id => [INT],  # World ID of the green world
+   wvw_match_id   => [STR],     # Match ID
+   red_world_id   => [INT],     # World ID of the red world
+   blue_world_id  => [INT],     # World ID of the blue world
+   green_world_id => [INT],     # World ID of the green world
+   start_time     => [STRING],  # Date/time that current match started (UTC)
+   end_time       => [STRING],  # Date/time that current match ended (UTC)
  )
 
 =item $api->wvw_match_details( $match_id )
@@ -309,8 +311,8 @@ The following elements are shared between different type data elements:
    [
      {
        flags  => @([STRING]...),  # Flags on the infusion slot (Defense, Offense, Utility)
-       item   => [INT],           # Item ID of attached infusion
-     }
+     },
+     ...                          # repeat for multiple infusion slots (no item has >1 currently)
    ]
 
  infix_upgrade =>
@@ -487,12 +489,16 @@ optional language parameter can be passed to override the default language. The
 hash has the following structure:
 
  (
-   recipe_id          => [INT],     # Recipe ID
-   type               => [STRING],  # Recipe type***
-   output_item_id     => [INT],     # Item ID of the recipe output
-   output_item_count  => [INT],     # Quantity of item output
-   min_rating         => [INT],     # Required rating in the associated crafting discipline
-   time_to_craft_ms   => [INT],     # Duration of crafting the recipe
+   recipe_id          => [INT],         # Recipe ID
+   type               => [STRING],      # Recipe type***
+   output_item_id     => [INT],         # Item ID of the recipe output
+   output_item_count  => [INT],         # Quantity of item output
+   min_rating         => [INT],         # Required rating in the associated crafting discipline
+   time_to_craft_ms   => [INT],         # Duration of crafting the recipe
+   disciplines        => @([STRING]...) # List of disciplines that can craft the recipe
+                                        # (Armorsmith, Artificer, Chef, Huntsman, Jeweler,
+                                        #  Leatherworker, Tailor, Weaponsmith)
+   flags              => @([STRING]...) # If recipe is not learned through Discovery (AutoLearned, LearnedFromItem)
    ingredients        =>
      [
        {
