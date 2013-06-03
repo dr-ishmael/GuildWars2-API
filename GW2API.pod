@@ -7,38 +7,39 @@ GW2API - An interface library for the Guild Wars 2 API
 =head1 SYNOPSIS
 
  require GW2API;
- 
+
  my $api = GW2API->new;
- 
+
  # Check the current state of an event on all worlds
- 
+
  my %event_states = $api->event_state_by_world($event_id);
- 
+
  foreach my $world_id (keys %event_states) {
      my $state = $event_states{$world_id};
-     
+
      print "$world_id : $state\n";
-     
+
  }
- 
+
  # Lookup the attribute bonuses on a weapon
- 
+
  my %item_details = $api->item_details($item_id);
- 
+
  my $attributes_ref = %item_details{weapon}->{attributes};
- 
+
  foreach my $attribute (@$attributes_ref) {
-     my ($attr_name, $attr_value) = 
+     my ($attr_name, $attr_value) =
           ($attribute->{attribute}, $attribute->{modifier});
-     
+
      print "+$attr_value $attr_name\n";
-     
+
  }
 
 =head1 DESCRIPTION
 
-GW2API is a class module that provides a set of standard interfaces to the Guild 
-Wars 2 API. 
+GW2API is a class module that provides a set of standard interfaces to the Guild
+Wars 2 API.
+
 
 =head1 Constructor
 
@@ -47,57 +48,135 @@ Wars 2 API.
 =item $api = GW2API->new
 =item $api = GW2API->new( key => value, ... )
 
-This method constructs a new C<GW2API> object and returns it. Key/value pairs of 
+This method constructs a new C<GW2API> object and returns it. Key/value pairs of
 configuration options may be provided.
+
 
 =item timeout [INT]
 
-The length of time, in seconds, to wait for a response from the API. Defaults to 30.
+The length of time, in seconds, to wait for a response from the API. Defaults to
+30.
+
 
 =item retries [INT]
 
 The number of times to attempt an API request before dying. Defaults to 3.
 
+
 =item version [STRING]
 
-The version of the API to use. Defaults to 'v1', which is the only version 
+The version of the API to use. Defaults to 'v1', which is the only version
 available at this time.
+
 
 =item language [STRING]
 
-The language code to use for all API requests. Defaults to 'en', other supported 
-languages are 'de', 'es', and 'fr'. This setting can be overridden for 
-individual API methods.
+The language code to use for all API requests. Defaults to 'en', other
+supported languages are 'de', 'es', and 'fr'. This setting can be overridden
+when calling individual API methods.
 
-=item nocache [BOOL]
 
-Disable local caching of API responses. Defaults to undef. Using this in 
-combination with any of the following cache options will cause an error.
+=item color_format [STRING]
 
-=item cache_dir [STRING]
+The format for color values returned from the colors.json API. Default is
+'rgbhex'.
 
-The local directory to use as the cache location. Defaults to './gw2api-cache' 
-and will attempt to create the directory if it does not exist.
+=over
 
-=item cache_age [DURATION]
+=item rgb
 
-Length of time after which the cached version of I<most> responses will expire. 
-Defaults to '24 hours'. Accepted values are strings consisting of an integer 
-followed by a time unit, e.g. '1 day' or '10 seconds'.
+Return RGB values normalized to 1.
 
-=item event_cache_age [DURATION]
+=item rgb255
 
-Length of time after which the cached version of I<event state> responses will 
-expire. Defaults to '30 seconds'.
+Return RGB values normalized to 255 and rounded.
 
-=item wvw_cache_age [DURATION]
+=item rgbhex
 
-Length of time after which the cached version of I<WvW match detail> responses 
-will expire. Defaults to '5 minutes'.
+Return RGB value converted to a 6-character hex string.
+
+=item hsl
+
+Return HSL values normalized to 1.
+
+=item hsl360
+
+Return HSL values normalized to 360/100/100 and rounded.
 
 =back
 
+
+=item nocache [BOOL]
+
+Disable local caching of API responses. Defaults to undef. Using this in
+combination with any of the following cache options will cause an error.
+
+
+=item cache_dir [STRING]
+
+The local directory to use as the cache location. Defaults to './gw2api-cache'
+and will attempt to create the directory if it does not exist.
+
+
+=item cache_age [DURATION]
+
+Length of time after which the cached responses will expire. Defaults to '24
+hours'. Accepted values are strings consisting of an integer followed by a time
+unit, e.g. '1 day' or '10 seconds'.
+
+This applies to I<most> of the APIs; the following *_cache_age parameters
+override this setting for specific APIs.
+
+
+=item event_cache_age [DURATION]
+
+Length of time after which the cached version of I<event state> responses will
+expire. Defaults to '30 seconds'.
+
+
+=item wvw_cache_age [DURATION]
+
+Length of time after which the cached version of I<WvW match detail> responses
+will expire. Defaults to '5 minutes'.
+
+
+=back
+
+
 =head1 Methods
+
+=head2 Config access methods
+
+=over
+
+=item $api->timeout
+
+=item $api->timeout( $timeout )
+
+Get or set the C<timeout> configuration option.
+
+=item $api->retries
+
+=item $api->retries( $retries )
+
+Get or set the C<retries> configuration option.
+
+=item $api->language
+
+=item $api->language( $lang )
+
+Get or set the C<language> configuration option.
+
+=item $api->color_format
+
+=item $api->color_format( $color_format )
+
+Get or set the C<color_format> configuration option.
+
+=back
+
+
+=head2 API methods
 
 =over
 
@@ -113,14 +192,15 @@ will expire. Defaults to '5 minutes'.
 =item $api->objective_names
 =item $api->objective_names( $lang )
 
-Each of these methods returns a hash, keyed by the event/map/etc. ID, containing 
-the names corresponding to those IDs. An optional language parameter can be 
+Each of these methods returns a hash, keyed by the event/map/etc. ID, containing
+the names corresponding to those IDs. An optional language parameter can be
 passed to override the default language.
+
 
 =item $api->event_state( $event_id, $world_id )
 
-Returns a string containing the current state of a specific event on a specific 
-world. Event state will be one of the following values (definitions are from 
+Returns a string containing the current state of a specific event on a specific
+world. Event state will be one of the following values (definitions are from
 L<the official API documentation|https://forum-en.guildwars2.com/forum/community/api/API-Documentation/>):
 
  State        Meaning
@@ -130,24 +210,27 @@ L<the official API documentation|https://forum-en.guildwars2.com/forum/community
  Fail         The event has failed.
  Warmup       The event is inactive, and will only become active once
               certain criteria are met.
- Preparation  The criteria for the event to start have been met, but 
-              certain activities (such as an NPC dialogue) have not 
-              completed yet. After the activites have been completed, 
+ Preparation  The criteria for the event to start have been met, but
+              certain activities (such as an NPC dialogue) have not
+              completed yet. After the activites have been completed,
               the event will become Active.
+
 
 =item $api->event_state_by_world( $event_id )
 
-Returns a hash, keyed by world ID, containing the current state of the given 
+Returns a hash, keyed by world ID, containing the current state of the given
 event on each world.
+
 
 =item $api->event_states_in_map( $map_id, $world_id )
 
-Returns a hash, keyed by event ID, containing the current state of all events 
+Returns a hash, keyed by event ID, containing the current state of all events
 occurring within a specific map on a specific world.
+
 
 =item $api->wvw_matches
 
-Returns an array containing basic information on the current WvW matches. Each 
+Returns an array containing basic information on the current WvW matches. Each
 array element is a hash with the following structure:
 
  (
@@ -159,9 +242,10 @@ array element is a hash with the following structure:
    end_time       => [STRING],  # Date/time that current match ended (UTC)
  )
 
+
 =item $api->wvw_match_details( $match_id )
 
-Returns a hash containing detailed information on a specific WvW match. The hash 
+Returns a hash containing detailed information on a specific WvW match. The hash
 has the following structure:
 
  (
@@ -197,16 +281,18 @@ has the following structure:
      ],
  )
 
+
 =item $api->items
 
 Returns an array containing all known item IDs.
 
+
 =item $api->item_details( $item_id )
 =item $api->item_details( $item_id, $lang )
 
-Returns a hash containing detailed information for the given item ID. An 
-optional language parameter can be passed to override the default language. The 
-hash has the following structure (elements marked with *** are enumerated below 
+Returns a hash containing detailed information for the given item ID. An
+optional language parameter can be passed to override the default language. The
+hash has the following structure (elements marked with *** are enumerated below
 the main structure):
 
  (
@@ -220,10 +306,10 @@ the main structure):
    game_types   => @([STRING],...), # Game types where item can be used***
    flags        => @([STRING],...), # Behavioral flags***
    restrictions => @([STRING],...), # Racial restrictions***
-   
+
    # One of the following data elements corresponding to the value of "type" above.
    # Note that some item types do not have a corresponding data element.
-   
+
    armor =>
      {
        type           => [STRING],  # Armor type***
@@ -233,20 +319,20 @@ the main structure):
        infix_upgrade  => %( ),      # Infix upgrade***
        suffix_item_id => [INT],     # Item ID of attached upgrade component
      }
-   
+
    back =>
      {
        infusion_slots => @( ),      # Infusion slots***
        infix_upgrade  => %( ),      # Infix upgrade***
        suffix_item_id => [INT],     # Item ID of attached upgrade component
      }
-   
+
    bag =>
      {
        no_sell_or_sort => [BOOL],   # Items in bag are not sorted or shown to merchants
        size            => [INT],    # Number of slots
      }
-   
+
    consumable =>
      {
        type         => [STRING],    # Consumable type***
@@ -254,27 +340,27 @@ the main structure):
        description  => [STRING],    # Description of nourishment effect
                                     # (Nourishment effects are only on Food and Utility consumables)
      }
-   
+
    container =>
      {
        type => [STRING],            # Container type (Default, GiftBox)
      }
-   
+
    gathering =>
      {
        type => [STRING],            # Gathering type (Foraging, Logging, Mining)
      }
-   
+
    gizmo =>
      {
        type => [STRING],            # Gizmo type (Default, RentableContractNpc, UnlimitedConsumable)
      }
-   
+
    tool =>
      {
        type => [STRING],            # Tool type (Salvage)
      }
-   
+
    trinket =>
      {
        type => [STRING],            # Trinket type (Accessory, Amulet, Ring)
@@ -282,7 +368,7 @@ the main structure):
        infix_upgrade  => %( ),      # Infix upgrade***
        suffix_item_id => [INT],     # Item ID of attached upgrade component
      }
-   
+
    upgrade_component =>
      {
        type           => [STRING],        # Upgrade type (Default, Gem, Rune, Sigil)
@@ -291,7 +377,7 @@ the main structure):
        infix_upgrade  => %( ),            # Infix upgrade***
        suffix         => [STRING],        # Suffix bestowed by the upgrade
      }
-   
+
    weapon =>
      {
        type        => [STRING],     # Weapon type***
@@ -426,7 +512,7 @@ Enumerations:
  HeavyArmor
  LightArmor
  MediumArmor
- 
+
  # Weapons
  Axe
  LongBow
@@ -447,7 +533,7 @@ Enumerations:
  Torch
  Trident
  Warhorn
- 
+
  # Trinkets
  Trinket
 
@@ -477,15 +563,17 @@ Enumerations:
 
 =back
 
+
 =item $api->recipes
 
 Returns an array containing all known recipe IDs.
 
+
 =item $api->recipe_details( $recipe_id )
 =item $api->recipe_details( $recipe_id, $lang )
 
-Returns a hash containing detailed information for the given recipe ID. An 
-optional language parameter can be passed to override the default language. The 
+Returns a hash containing detailed information for the given recipe ID. An
+optional language parameter can be passed to override the default language. The
 hash has the following structure:
 
  (
@@ -509,6 +597,27 @@ hash has the following structure:
      ],
  )
 
+
+=item $api->colors
+=item $api->colors( $lang )
+
+Returns a hash, keyed on color_id, containing color information for all colors
+in the game. Each entry is a hashref with the following structure:
+
+ {
+   default  => [VARIES]   # Color for "default" material
+   cloth    => [VARIES]   # Color for "cloth" material
+   leather  => [VARIES]   # Color for "leather" material
+   metal    => [VARIES]   # Color for "metal" material
+ }
+
+The data type of each entry is based on the C<color_format> configuration
+option. For the 'rgbhex' (default) format, the entries are [STRING] containing
+the 6-character hex representation of the RGB color. For 'rgb' and 'hsl'
+formats, the entries are array([FLOAT]) containing the 3 component values; for
+rgb255 and hsl360, they are instead array([INT]).
+
+
 =back
 
 =head1 Author
@@ -519,7 +628,7 @@ Tony Tauer, E<lt>dr.ishmael[at]gmail.comE<gt>
 
 Copyright 2013 by Tony Tauer
 
-This library is free software; you can redistribute it and/or modify it under 
-the same terms as Perl itself. 
+This library is free software; you can redistribute it and/or modify it under
+the same terms as Perl itself.
 
 =cut

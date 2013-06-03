@@ -87,6 +87,9 @@ my $_url_colors           = 'colors.json';
 # Supported languages
 my @_languages = qw/de en es fr/;
 
+# Supported color formats
+my @_color_formats = qw/rgb rgb255 rgbhex hsl hsl360/;
+
 ####################
 # Constructor
 ####################
@@ -116,7 +119,8 @@ sub new {
 
 =item timeout [INT]
 
-The length of time, in seconds, to wait for a response from the API. Defaults to 30.
+The length of time, in seconds, to wait for a response from the API. Defaults to
+30.
 
 =cut
 
@@ -150,14 +154,52 @@ available at this time.
 
 =item language [STRING]
 
-The language code to use for all API requests. Defaults to 'en', other supported
-languages are 'de', 'es', and 'fr'. This setting can be overridden for
-individual API methods.
+The language code to use for all API requests. Defaults to 'en', other
+supported languages are 'de', 'es', and 'fr'. This setting can be overridden
+when calling individual API methods.
 
 =cut
 
   my $language = check_language(delete $cnf{language});
   $language = 'en' unless defined $language;
+
+=pod
+
+=item color_format [STRING]
+
+The format for color values returned from the colors.json API. Default is
+'rgbhex'.
+
+=over
+
+=item rgb
+
+Return RGB values normalized to 1.
+
+=item rgb255
+
+Return RGB values normalized to 255 and rounded.
+
+=item rgbhex
+
+Return RGB value converted to a 6-character hex string.
+
+=item hsl
+
+Return HSL values normalized to 1.
+
+=item hsl360
+
+Return HSL values normalized to 360/100/100 and rounded.
+
+=back
+
+=cut
+
+  my $color_format = delete $cnf{color_format};
+  $color_format = 'rgbhex' unless defined $color_format;
+  $color_format = lc($color_format);
+  Carp::croak("Unrecognized option [$color_format] for color_format") if !($color_format ~~ @_color_formats);
 
 =pod
 
@@ -187,9 +229,12 @@ and will attempt to create the directory if it does not exist.
 
 =item cache_age [DURATION]
 
-Length of time after which the cached version of I<most> responses will expire.
-Defaults to '24 hours'. Accepted values are strings consisting of an integer
-followed by a time unit, e.g. '1 day' or '10 seconds'.
+Length of time after which the cached responses will expire. Defaults to '24
+hours'. Accepted values are strings consisting of an integer followed by a time
+unit, e.g. '1 day' or '10 seconds'.
+
+This applies to I<most> of the APIs; the following *_cache_age parameters
+override this setting for specific APIs.
 
 =cut
 
@@ -226,6 +271,12 @@ will expire. Defaults to '5 minutes'.
     if $wvw_cache_age && $nocache;
   $wvw_cache_age = "1 minute" unless defined $wvw_cache_age;
 
+=pod
+
+=back
+
+=cut
+
   if (%cnf && $^W) {
     Carp::carp("Unrecognized GW2API options: @{[sort keys %cnf]}");
   }
@@ -236,7 +287,8 @@ will expire. Defaults to '5 minutes'.
       retries         => $retries,
       version         => $version,
       base_url        => 'https://api.guildwars2.com/' . $version,
-      language        => lc($language),
+      language        => $language,
+      color_format    => $color_format,
       json            => JSON::XS->new,
       ua              => LWP::UserAgent->new,
       cache           => undef,
@@ -269,8 +321,59 @@ will expire. Defaults to '5 minutes'.
   return $self;
 }
 
+sub _elem
+{
+  my $self = shift;
+  my $elem = shift;
+  my $old = $self->{$elem};
+  $self->{$elem} = shift if @_;
+  return $old;
+}
+
+=pod
+
+=head1 Methods
+
+=head2 Config access methods
+
+=over
+
+=item $api->timeout
+
+=item $api->timeout( $timeout )
+
+Get or set the C<timeout> configuration option.
+
+=item $api->retries
+
+=item $api->retries( $retries )
+
+Get or set the C<retries> configuration option.
+
+=item $api->language
+
+=item $api->language( $lang )
+
+Get or set the C<language> configuration option.
+
+=item $api->color_format
+
+=item $api->color_format( $color_format )
+
+Get or set the C<color_format> configuration option.
+
+=back
+
+=cut
+
+sub timeout      { shift->_elem('timeout'     ,@_); }
+sub retries      { shift->_elem('retries'     ,@_); }
+sub language     { shift->_elem('language'    ,@_); }
+sub color_format { shift->_elem('color_format',@_); }
+
+
 ####################
-# Core methods
+# Core methods - not exposed through documentation
 ####################
 
 # Shortcuts
@@ -356,11 +459,6 @@ sub rgb2hsl {
 sub hsl2rgb {
   my ($self, $h, $s, $l) = @_;
 
-  for ($s) {
-    $s -= 1 when $_ > 1;
-    $s += 1 when $_ < 0;
-  }
-#print "$h $s $l\n" if $h > 360 || $s > 1 || $l > 1;
   my ($r, $g, $b) = ($l) x 3;
 
   if ($s != 0) {
@@ -409,7 +507,7 @@ sub rgb2hex {
   my ($r2, $g2, $b2) = map { sprintf "%02X", int($_) } ($r, $g, $b);
 
   my $hexstring = $r2.$g2.$b2;
-  #printf "%3.5f %3.5f %3.5f %s\n", $r, $g, $b, $hexstring if length($hexstring) != 6;
+
   return $hexstring;
 }
 
@@ -470,19 +568,13 @@ sub api_request {
   return $decoded;
 }
 
-=pod
-
-=back
-
-=head1 Methods
-
-=cut
-
 ####################
 # Specific API accessors
 ####################
 
 =pod
+
+=head2 API methods
 
 =over
 
@@ -1137,6 +1229,29 @@ sub recipe_details {
   return %$json;
 }
 
+=pod
+
+=item $api->colors
+=item $api->colors( $lang )
+
+Returns a hash, keyed on color_id, containing color information for all colors
+in the game. Each entry is a hashref with the following structure:
+
+ {
+   default  => [VARIES]   # Color for "default" material
+   cloth    => [VARIES]   # Color for "cloth" material
+   leather  => [VARIES]   # Color for "leather" material
+   metal    => [VARIES]   # Color for "metal" material
+ }
+
+The data type of each entry is based on the C<color_format> configuration
+option. For the 'rgbhex' (default) format, the entries are [STRING] containing
+the 6-character hex representation of the RGB color. For 'rgb' and 'hsl'
+formats, the entries are array([FLOAT]) containing the 3 component values; for
+rgb255 and hsl360, they are instead array([INT]).
+
+=cut
+
 sub colors {
   my ($self, $lang) = @_;
 
@@ -1151,7 +1266,6 @@ sub colors {
   my %color_data;
 
   foreach my $color_id (keys %{$json->{colors}}) {
-  #foreach my $color_id (548) {
     my $color = $json->{colors}->{$color_id};
 
     $color_data{$color_id} = { name => $color->{name} };
@@ -1164,15 +1278,42 @@ sub colors {
         my $saturation = $color->{$material}->{saturation};
         my $lightness  = $color->{$material}->{lightness};
 
-        my ($R, $G, $B) = map { ($_ - 128) * $contrast + 128 } map { $_ + $brightness } (128, 26, 26);
+        # Chained array mapping operations - applied in reverse order
+        my ($R, $G, $B) = map { ($_ > 255) ? 255 : $_ }         # 4. Correct values to 0 or 255 if shifts
+                          map { ($_ < 0) ? 0 : $_ }             #     result in values outside that range.
+                          map { ($_ - 128) * $contrast + 128 }  # 3. Apply contrast shift
+                          map { $_ + $brightness }              # 2. Apply brightness shift
+                          (128, 26, 26);                        # 1. Base RGB for "most" colors
 
         my ($H, $S, $L) = $self->rgb2hsl($R, $G, $B);
 
-        my @final_color = $self->hsl2rgb((360*$H + $hue)/360, $S * $saturation, $L * $lightness);
+        $H = (360*$H + $hue)/360;   # 5. Apply hue shift
+        $H = $H - 1 if $H > 1;      # 6. Correct hue value (hue is cyclical)
 
-        $color_data{$color_id}->{$material} = $self->rgb2hex(@final_color);
-      } else {
-        $color_data{$color_id}->{$material} = "";
+        $S *= $saturation;          # 7. Apply saturation shift
+        $S = 1 if $S > 1;           # 8. Correct saturation value to 1 if shift results in value > 1
+
+        $L *= $lightness;           # 9. Apply lightness shift
+        $L = 1 if $L > 1;           # 10. Correct lightness value to 1 if shift results in value > 1
+
+        for ($self->{color_format}) {
+          when ("rgbhex") { $color_data{$color_id}->{$material} = $self->rgb2hex($self->hsl2rgb($H, $S, $L)) }
+          when ("rgb")    {
+            my @rgb = map { $_ / 255 } $self->hsl2rgb($H, $S, $L);
+            $color_data{$color_id}->{$material} =  \@rgb;
+          }
+          when ("rgb255") {
+            my @rgb = $self->hsl2rgb($H, $S, $L);
+            @rgb = map { int($_ + 0.5) } @rgb;
+            $color_data{$color_id}->{$material} = \@rgb;
+          }
+          when ("hsl")    { $color_data{$color_id}->{$material} = [$H, $S, $L] }
+          when ("hsl360") {
+            my @hsl = ($H*360, $S*100, $L*100);
+            @hsl = map { int($_ + 0.5) } @hsl;
+            $color_data{$color_id}->{$material} = \@hsl;
+          }
+        }
       }
     }
   }
