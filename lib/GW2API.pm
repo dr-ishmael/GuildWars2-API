@@ -1138,7 +1138,7 @@ sub colors {
 
   my $json = $self->api_request($_url_colors, { lang => $lang } );
 
-  return %color_data;
+  return %{$json->{colors}};
 }
 
 =pod

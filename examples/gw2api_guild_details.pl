@@ -46,15 +46,14 @@ foreach my $guild_id (@known_guilds) {
 
   my $guild_name    = $guild_details{guild_name};
   my $guild_tag     = $guild_details{tag};
-  my $guild_emblem  = $guild_details{emblem};
 
   # Some guilds don't have emblems!
-  my $emblem_bg         = $guild_emblem->{background_id} || "";
-  my $emblem_bg_color   = $guild_emblem->{background_color_id} || "";
-  my $emblem_fg         = $guild_emblem->{foreground_id} || "";
-  my $emblem_fg_color1  = $guild_emblem->{foreground_primary_color_id} || "";
-  my $emblem_fg_color2  = $guild_emblem->{foreground_secondary_color_id} || "";
-  my $emblem_flags      = $guild_emblem->{flags} || [];
+  my $emblem_bg         = $guild_details{emblem}->{background_id} || "";
+  my $emblem_bg_color   = $guild_details{emblem}->{background_color_id} || "";
+  my $emblem_fg         = $guild_details{emblem}->{foreground_id} || "";
+  my $emblem_fg_color1  = $guild_details{emblem}->{foreground_primary_color_id} || "";
+  my $emblem_fg_color2  = $guild_details{emblem}->{foreground_secondary_color_id} || "";
+  my $emblem_flags      = $guild_details{emblem}->{flags} || [];
 
   print OMAIN "$guild_id|$guild_name|$guild_tag|$emblem_bg|$emblem_bg_color|$emblem_fg|$emblem_fg_color1|$emblem_fg_color2"
             . "|" . join(",", @$emblem_flags)
