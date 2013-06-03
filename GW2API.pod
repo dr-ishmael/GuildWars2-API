@@ -180,6 +180,11 @@ Get or set the C<color_format> configuration option.
 
 =over
 
+=item $api->build
+
+Returns the current build number.
+
+
 =item $api->event_names
 =item $api->event_names( $lang )
 
@@ -616,6 +621,29 @@ option. For the 'rgbhex' (default) format, the entries are [STRING] containing
 the 6-character hex representation of the RGB color. For 'rgb' and 'hsl'
 formats, the entries are array([FLOAT]) containing the 3 component values; for
 rgb255 and hsl360, they are instead array([INT]).
+
+
+=item $api->guild_details( $guild_id )
+
+Returns a hash containing detailed information for the given guild ID. The hash
+has the following structure:
+
+ (
+   guild_id   => [STRING],    # Guild ID
+   guild_name => [STRING],    # Guild name
+   tag        => [STRING],    # Guild tag
+   emblem     =>              # Guild emblem data
+     {
+       background_id                  => [INT]          # ID of background texture
+       foreground_id                  => [INT]          # ID of foreground texture
+       flags                          => @([STRING]...) # Identify bg/fg transformations
+                                                        # (FlipBackgroundHorizontal, FlipBackgroundVertical,
+                                                        #  FlipForegroundHorizontal, FlipForegroundVertical)
+       background_color_id            => [INT]          # Color ID of background color
+       foreground_primary_color_id    => [INT]          # Color ID of primary foreground color
+       foreground_secondary_color_id  => [INT]          # Color ID of secondary foreground color
+     }
+ )
 
 
 =back

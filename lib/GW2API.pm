@@ -578,6 +578,22 @@ sub api_request {
 
 =over
 
+=item $api->build
+
+Returns the current build number.
+
+=cut
+
+sub build {
+ my ($self) = @_;
+
+  my $json = $self->api_request($_url_build);
+
+  return $json->{build_id};
+}
+
+=pod
+
 =item $api->event_names
 =item $api->event_names( $lang )
 
@@ -1314,12 +1330,54 @@ sub colors {
             $color_data{$color_id}->{$material} = \@hsl;
           }
         }
+      } else {
+        $color_data{$color_id}->{$material} = ($self->{color_format} eq "rgbhex") ? "" : [];
       }
     }
   }
   return %color_data;
 }
 
+=pod
+
+=item $api->guild_details( $guild_id )
+
+Returns a hash containing detailed information for the given guild ID. The hash
+has the following structure:
+
+ (
+   guild_id   => [STRING],    # Guild ID
+   guild_name => [STRING],    # Guild name
+   tag        => [STRING],    # Guild tag
+   emblem     =>              # Guild emblem data
+     {
+       background_id                  => [INT]          # ID of background texture
+       foreground_id                  => [INT]          # ID of foreground texture
+       flags                          => @([STRING]...) # Identify bg/fg transformations
+                                                        # (FlipBackgroundHorizontal, FlipBackgroundVertical,
+                                                        #  FlipForegroundHorizontal, FlipForegroundVertical)
+       background_color_id            => [INT]          # Color ID of background color
+       foreground_primary_color_id    => [INT]          # Color ID of primary foreground color
+       foreground_secondary_color_id  => [INT]          # Color ID of secondary foreground color
+     }
+ )
+
+=cut
+
+sub guild_details {
+  my ($self, $guild_id) = @_;
+
+  # Sanity checks on guild_id
+  Carp::croak("You must provide a guild ID")
+    unless defined $guild_id;
+
+  Carp::croak("Given guild ID [$guild_id] does not match guild ID pattern")
+    unless $guild_id =~ /^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$/i;
+
+  my $json = $self->api_request($_url_guild_details, { guild_id => $guild_id });
+
+  return %$json;
+}
 =pod
 
 =back
