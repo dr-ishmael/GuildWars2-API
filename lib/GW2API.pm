@@ -11,6 +11,8 @@ use JSON::XS;
 use List::Util qw/max min/;
 use LWP::UserAgent;
 
+use GW2API::AnetColor;
+
 use Carp ();
 
 =pod
@@ -248,6 +250,7 @@ will expire. Defaults to '5 minutes'.
       language        => $language,
       json            => JSON::XS->new,
       ua              => LWP::UserAgent->new,
+      anetcolor       => GW2API::AnetColor->new,
       cache           => undef,
       cache_age       => $cache_age,
       event_cache_age => $event_cache_age,
@@ -340,6 +343,11 @@ sub json {
 sub cache {
   my $self = shift;
   return $self->{cache};
+}
+
+sub anetcolor {
+  my $self = shift;
+  return $self->{anetcolor};
 }
 
 ###

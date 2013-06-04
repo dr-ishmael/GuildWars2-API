@@ -2,19 +2,13 @@ package GW2API::AnetColor;
 
 use strict;
 
-BEGIN {
-  require Exporter;
-  our @EXPORT      = qw(compositeColorShiftRgb);
-}
-
 use List::Util qw/max min/;
 
 use constant PI => 4 * atan2(1, 1);
 
 sub new {
   my $class = shift;
-  my $this = $class->SUPER::new( @_ );
-  return bless $this, $class;
+  my $self = bless {}, $class;
 }
 
 sub matrix_multiply {
@@ -46,7 +40,7 @@ sub matrix_count_rows_cols {  # return number of rows and columns
 
 
 sub compositeColorShiftRgb {
-  my ($base_rgb, $material) = @_;
+  my ($self, $base_rgb, $material) = @_;
 
   my $brightness = $material->{brightness} / 128;
   my $contrast   = $material->{contrast};
@@ -105,43 +99,22 @@ sub compositeColorShiftRgb {
   }
 
   # apply the color transformation
-  if (ref($base_rgb->[0]) && ref($base_rgb->[0]->[0])) {
-    # $base_rgb looks like a 2D array / aka matrix / aka image
-    my ($r1, $c1) = matrix_count_rows_cols ($base_rgb);
-    my @result_rgb;
-    for (my $i = 0; $i < $r1; $i++) {
-      for (my $j = 0; $j < $c2; $j++) {
-        my @bgrVector = (
-          [$base_rgb->[$i]->[$j]->[2]],
-          [$base_rgb->[$i]->[$j]->[1]],
-          [$base_rgb->[$i]->[$j]->[0]],
-          [1],
-        );
+  my @bgrVector = (
+    [$base_rgb->[2]],
+    [$base_rgb->[1]],
+    [$base_rgb->[0]],
+    [1],
+  );
 
-        @bgrVector = @{matrix_multiply(\@matrix, \@bgrVector)};
+  @bgrVector = @{matrix_multiply(\@matrix, \@bgrVector)};
 
-        my @resultRgb = map { int(max(0, min(255, $_))) }
-                        ($bgrVector[2][0], $bgrVector[1][0], $bgrVector[0][0]);
+    #print "$bgrVector[2][0] $bgrVector[1][0] $bgrVector[0][0]\n";
 
-        $result_rgb[$i]->[$j] = \@resultRgb;
-      }
-    }
-  } else {
-    # $base_rgb is a single RGB vector
-    my @bgrVector = (
-      [$base_rgb->[2]],
-      [$base_rgb->[1]],
-      [$base_rgb->[0]],
-      [1],
-    );
+  my @resultRgb = map { int(max(0, min(255, $_))) }
+                  ($bgrVector[2][0], $bgrVector[1][0], $bgrVector[0][0]);
 
-    @bgrVector = @{matrix_multiply(\@matrix, \@bgrVector)};
-
-    my @resultRgb = map { int(max(0, min(255, $_))) }
-                    ($bgrVector[2][0], $bgrVector[1][0], $bgrVector[0][0]);
-
-  }
   return @resultRgb;
+
 }
 
 1;
