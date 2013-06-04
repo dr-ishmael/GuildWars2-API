@@ -1,5 +1,9 @@
 #!perl -w
 
+
+# This "works" in that it applies the color transforms appropriately. However,
+# GD fails at alpha handling, so there's no way to make the result game-accurate.
+
 use strict;
 
 use GW2API;

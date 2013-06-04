@@ -12,7 +12,15 @@ sub new {
 }
 
 sub matrix_multiply {
-    my ($r_mat1, $r_mat2) = @_;       # Taking matrices by reference
+  my ($self, $r_mat1, $r_mat2);
+    if (ref($_[0]) eq "GW2API::AnetColor") {
+      # called as class method
+      ($self, $r_mat1, $r_mat2) = @_;
+    } else {
+      # called as function
+      ($r_mat1, $r_mat2) = @_;        # Taking matrices by reference
+    }
+
     my ($r_product);                  # Returing product by reference
     my ($r1, $c1) = matrix_count_rows_cols ($r_mat1);
     my ($r2, $c2) = matrix_count_rows_cols ($r_mat2);
@@ -31,7 +39,13 @@ sub matrix_multiply {
 }
 
 sub matrix_count_rows_cols {  # return number of rows and columns
-    my ($r_mat)  = @_;
+    my ($self, $r_mat);
+    if (ref($_[0]) eq "GW2API::AnetColor") {
+      ($self, $r_mat) = @_;
+    } else {
+      ($r_mat) = @_;
+    }
+
     my $num_rows = @$r_mat;
     my $num_cols = @{$r_mat->[0]}; # Assume all rows have an equal no.
                                    # of columns.
