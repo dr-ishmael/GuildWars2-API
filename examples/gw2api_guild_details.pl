@@ -9,16 +9,18 @@ my $api = GW2API->new;
 my @prior_ids = ();
 
 # Read in guild IDs that have already been processed.
-open (IMAIN, "guild_details.csv") or die "unable to open file: $!\n";
+if (-e "guild_details.csv") {
+  open (IMAIN, "guild_details.csv") or die "unable to open file: $!\n";
 
-<IMAIN>; # throw out the header row
+  <IMAIN>; # throw out the header row
 
-while (<IMAIN>) {
-  my ($id) = split(/\|/, $_);
-  push @prior_ids, $id;
+  while (<IMAIN>) {
+    my ($id) = split(/\|/, $_);
+    push @prior_ids, $id;
+  }
+
+  close (IMAIN);
 }
-
-close (IMAIN);
 
 open(OMAIN, ">guild_details.csv") or die "unable to open file: $!\n";
 
