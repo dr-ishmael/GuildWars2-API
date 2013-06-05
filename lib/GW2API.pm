@@ -2,12 +2,12 @@ package GW2API;
 
 use strict;
 
-use v5.10.1;
+use 5.14.0;
 
 our $VERSION     = "0.1";
 
 use CHI;
-use JSON::XS;
+use JSON::PP;
 use List::Util qw/max min/;
 use LWP::UserAgent;
 
@@ -115,6 +115,8 @@ sub new {
 
 =pod
 
+=over
+
 =item timeout [INT]
 
 The length of time, in seconds, to wait for a response from the API. Defaults to
@@ -158,8 +160,33 @@ when calling individual API methods.
 
 =cut
 
-  my $language = check_language(delete $cnf{language});
+  my $language = _check_language(delete $cnf{language});
   $language = 'en' unless defined $language;
+
+=pod
+
+=item emblem_texture_folder [STRING]
+
+Local path of a folder containing guild emblem textures. Defaults to null. The
+folder should contain the subfolders "guild emblems" and "guild emblem
+backgrounds". See the C<generate_guild_emblem> method under L</AnetColor
+Methods> for details.
+
+=cut
+
+  my $emblem_texture_folder = delete $cnf{emblem_texture_folder};
+
+=pod
+
+=item emblem_output_folder [STRING]
+
+Local path of a folder where generated guild emblems will be output. Defaults to
+null. See the C<generate_guild_emblem> method under L</AnetColor Methods> for
+details.
+
+=cut
+
+  my $emblem_output_folder = delete $cnf{emblem_output_folder};
 
 =pod
 
@@ -235,6 +262,8 @@ will expire. Defaults to '5 minutes'.
 
 =back
 
+=back
+
 =cut
 
   if (%cnf && $^W) {
@@ -248,15 +277,20 @@ will expire. Defaults to '5 minutes'.
       version         => $version,
       base_url        => 'https://api.guildwars2.com/' . $version,
       language        => $language,
-      json            => JSON::XS->new,
+      json            => JSON::PP->new,
       ua              => LWP::UserAgent->new,
-      anetcolor       => GW2API::AnetColor->new,
+      anetcolor       => undef,
       cache           => undef,
       cache_age       => $cache_age,
       event_cache_age => $event_cache_age,
       wvw_cache_age   => $wvw_cache_age,
       nocache         => $nocache,
     }, $class;
+
+  $self->{anetcolor} = GW2API::AnetColor->new(
+                        emblem_texture_folder => $emblem_texture_folder,
+                        emblem_output_folder => $emblem_output_folder
+                     );
 
   # Set up file caching
   unless (defined $nocache) {
@@ -281,53 +315,41 @@ will expire. Defaults to '5 minutes'.
   return $self;
 }
 
-sub _elem
-{
-  my $self = shift;
-  my $elem = shift;
-  my $old = $self->{$elem};
-  $self->{$elem} = shift if @_;
-  return $old;
-}
+####################
+# "Sub-classed" objects
+####################
 
 =pod
 
-=head1 Methods
+=head2 Subclassed objects
 
-=head2 Config access methods
+The following classes are loaded into the constructor and can be accessed as
+"subobjects" of the main $api object.
 
 =over
 
-=item $api->timeout
+=item L<CHI|http://search.cpan.org/~jswartz/CHI-0.56/lib/CHI.pm> - $api->cache
 
-=item $api->timeout( $timeout )
+Interface to the file cache handler. Used for storing API responses locally.
 
-Get or set the C<timeout> configuration option.
+=item L<JSON::PP|http://search.cpan.org/~makamaka/JSON-PP-2.27202/lib/JSON/PP.pm> - $api->json
 
-=item $api->retries
+Interface for encoding/decoding JSON strings. Used to decode the JSON responses
+from the API.
 
-=item $api->retries( $retries )
+=item L<LWP::UserAgent|search.cpan.org/~gaas/libwww-perl-6.05/lib/LWP/UserAgent.pm> - $api->ua
 
-Get or set the C<retries> configuration option.
+HTTP interface. Used for interacting with the API.
 
-=item $api->language
+=item GW2API::AnetColor - $api->anetcolor
 
-=item $api->language( $lang )
-
-Get or set the C<language> configuration option.
+A true subclass, this is a collection of methods for utilizing the color
+transform data returned from the colors API. See the section on L</AnetColor
+Methods> for documentation.
 
 =back
 
 =cut
-
-sub timeout      { shift->_elem('timeout'     ,@_); }
-sub retries      { shift->_elem('retries'     ,@_); }
-sub language     { shift->_elem('language'    ,@_); }
-
-
-####################
-# Core methods - not exposed through documentation
-####################
 
 # Shortcuts
 sub ua {
@@ -350,6 +372,26 @@ sub anetcolor {
   return $self->{anetcolor};
 }
 
+####################
+# Core methods - not exposed through documentation
+####################
+
+###
+# Elem - easy attribute access
+###
+# @param scalar     New attribute value
+#
+# @return scalar    Current/old attribute value
+#
+sub _elem
+{
+  my $self = shift;
+  my $elem = shift;
+  my $old = $self->{$elem};
+  $self->{$elem} = shift if @_;
+  return $old;
+}
+
 ###
 # Check Language
 ###
@@ -357,7 +399,7 @@ sub anetcolor {
 #
 # @return scalar    Validated language code
 #
-sub check_language {
+sub _check_language {
   my ($self, $lang) = @_;
 
   # If input is undef, return undef
@@ -382,7 +424,7 @@ sub check_language {
 #
 # @return scalar    Decoded JSON object
 #
-sub api_request {
+sub _api_request {
   my ($self, $interface, $parms, $cache_age) = @_;
 
   my $parm_string = "";
@@ -431,6 +473,60 @@ sub api_request {
   return $decoded;
 }
 
+
+####################
+# Configuration methods
+####################
+
+=pod
+
+=head1 Methods
+
+=head2 Config access methods
+
+=over
+
+=item $api->timeout
+
+=item $api->timeout( $timeout )
+
+Get or set the C<timeout> configuration option.
+
+=item $api->retries
+
+=item $api->retries( $retries )
+
+Get or set the C<retries> configuration option.
+
+=item $api->language
+
+=item $api->language( $lang )
+
+Get or set the C<language> configuration option.
+
+=item $api->emblem_texture_folder
+
+=item $api->emblem_texture_folder( $path )
+
+Get or set the C<emblem_texture_folder> configuration option.
+
+=item $api->emblem_output_folder
+
+=item $api->emblem_output_folder( $path )
+
+Get or set the C<emblem_output_folder> configuration option.
+
+=back
+
+=cut
+
+sub timeout               { shift->_elem('timeout'     ,@_); }
+sub retries               { shift->_elem('retries'     ,@_); }
+sub language              { shift->_elem('language'    ,@_); }
+sub emblem_texture_folder { shift->anetcolor->_elem('emblem_texture_folder'    ,@_); }
+sub emblem_output_folder  { shift->anetcolor->_elem('emblem_output_folder'    ,@_); }
+
+
 ####################
 # Specific API accessors
 ####################
@@ -450,7 +546,7 @@ Returns the current build number.
 sub build {
  my ($self) = @_;
 
-  my $json = $self->api_request($_url_build);
+  my $json = $self->_api_request($_url_build);
 
   return $json->{build_id};
 }
@@ -479,12 +575,12 @@ sub _generic_names {
  my ($self, $interface, $lang) = @_;
 
   if (defined $lang) {
-    $lang = $self->check_language($lang);
+    $lang = $self->_check_language($lang);
   } else {
     $lang = $self->{language};
   }
 
-  my $json = $self->api_request($interface, { lang => $lang } );
+  my $json = $self->_api_request($interface, { lang => $lang } );
 
   my $names = {};
 
@@ -558,7 +654,7 @@ sub event_state {
   Carp::croak("Given world ID [$world_id] is not a positive integer")
     unless $world_id =~ /^\d+$/;
 
-  my $json = $self->api_request($_url_events, { event_id => $event_id, world_id => $world_id }, "30 seconds" );
+  my $json = $self->_api_request($_url_events, { event_id => $event_id, world_id => $world_id }, "30 seconds" );
 
   Carp::croak("No results for event ID [$event_id] and world ID [$world_id]")
     unless @{$json->{events}} > 0;
@@ -585,7 +681,7 @@ sub event_state_by_world {
   Carp::croak("Given event ID [$event_id] does not match event ID pattern")
     unless $event_id =~ /^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$/i;
 
-  my $json = $self->api_request($_url_events, { event_id => $event_id }, "30 seconds" );
+  my $json = $self->_api_request($_url_events, { event_id => $event_id }, "30 seconds" );
 
   Carp::croak("No results for event ID [$event_id]")
     unless @{$json->{events}} > 0;
@@ -628,7 +724,7 @@ sub event_states_in_map {
   Carp::croak("Given world ID [$world_id] is not a positive integer")
     unless $world_id =~ /^\d+$/;
 
-  my $json = $self->api_request($_url_events, { map_id  => $map_id, world_id => $world_id }, "30 seconds" );
+  my $json = $self->_api_request($_url_events, { map_id  => $map_id, world_id => $world_id }, "30 seconds" );
 
   Carp::croak("No results for map ID [$map_id] and world ID [$world_id]")
     unless @{$json->{events}} > 0;
@@ -666,7 +762,7 @@ array element is a hash with the following structure:
 sub wvw_matches {
   my ($self) = @_;
 
-  my $json = $self->api_request($_url_matches);
+  my $json = $self->_api_request($_url_matches);
 
   return @{$json->{wvw_matches}};
 }
@@ -723,7 +819,7 @@ sub wvw_match_details {
   Carp::croak("Given match ID [$match_id] is invalid")
     unless $match_id =~ /^[12]-[1-9]$/i;
 
-  my $json = $self->api_request($_url_match_details, { match_id => $match_id }, "5 minutes" );
+  my $json = $self->_api_request($_url_match_details, { match_id => $match_id }, "5 minutes" );
 
   return %$json;
 }
@@ -739,7 +835,7 @@ Returns an array containing all known item IDs.
 sub items {
   my ($self) = @_;
 
-  my $json = $self->api_request($_url_items);
+  my $json = $self->_api_request($_url_items);
 
   return @{$json->{items}};
 }
@@ -1035,12 +1131,12 @@ sub item_details {
     unless $item_id =~ /^\d+$/;
 
   if (defined $lang) {
-    $lang = $self->check_language($lang);
+    $lang = $self->_check_language($lang);
   } else {
     $lang = $self->{language};
   }
 
-  my $json = $self->api_request($_url_item_details, { lang => $lang, item_id => $item_id } );
+  my $json = $self->_api_request($_url_item_details, { lang => $lang, item_id => $item_id } );
 
   return %$json;
 }
@@ -1056,7 +1152,7 @@ Returns an array containing all known recipe IDs.
 sub recipes {
   my ($self) = @_;
 
-  my $json = $self->api_request($_url_recipes);
+  my $json = $self->_api_request($_url_recipes);
 
   return @{$json->{recipes}};
 }
@@ -1103,7 +1199,7 @@ sub recipe_details {
   Carp::croak("Given recipe ID [$recipe_id] is not a positive integer")
     unless $recipe_id =~ /^\d+$/;
 
-  my $json = $self->api_request($_url_recipe_details, { recipe_id => $recipe_id } );
+  my $json = $self->_api_request($_url_recipe_details, { recipe_id => $recipe_id } );
 
   return %$json;
 }
@@ -1138,12 +1234,12 @@ sub colors {
   my ($self, $lang) = @_;
 
   if (defined $lang) {
-    $lang = $self->check_language($lang);
+    $lang = $self->_check_language($lang);
   } else {
     $lang = $self->{language};
   }
 
-  my $json = $self->api_request($_url_colors, { lang => $lang } );
+  my $json = $self->_api_request($self->$_url_colors, { lang => $lang } );
 
   return %{$json->{colors}};
 }
@@ -1151,9 +1247,11 @@ sub colors {
 =pod
 
 =item $api->guild_details( $guild_id )
+=item $api->guild_details( $guild_name )
 
-Returns a hash containing detailed information for the given guild ID. The hash
-has the following structure:
+Returns a hash containing detailed information for the given guild ID or guild
+name. If the argument doesn't match the pattern of a guild ID, it is assumed to
+be a guild name. The hash has the following structure:
 
  (
    guild_id   => [STRING],    # Guild ID
@@ -1178,19 +1276,71 @@ sub guild_details {
   my ($self, $guild_id) = @_;
 
   # Sanity checks on guild_id
-  Carp::croak("You must provide a guild ID")
+  Carp::croak("You must provide a guild ID or guild name")
     unless defined $guild_id;
 
-  Carp::croak("Given guild ID [$guild_id] does not match guild ID pattern")
-    unless $guild_id =~ /^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$/i;
+  my $id_or_name;
+  if ($guild_id =~ /^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$/i) {
+    $id_or_name = "guild_id";
+  } else {
+    $guild_id =~ s/ /%20/g;
+    $id_or_name = "guild_name";
+  }
 
-  my $json = $self->api_request($_url_guild_details, { guild_id => $guild_id });
+  my $json = $self->_api_request($_url_guild_details, { $id_or_name => $guild_id });
 
   return %$json;
 }
 =pod
 
 =back
+
+=cut
+
+# Here I include POD for the AnetColor subclass so everything is documented in
+# one place
+
+=pod
+
+=head1 AnetColor Methods
+
+=over
+
+=item $api->anetcolor->colorShiftMatrix( \%material )
+
+Uses the color transformation data (brightness, contrast, hue, saturation,
+lightness) provided by the colors API to generate a transformation matrix,
+returned as an array. C<%material> is one of the 'cloth', 'leather', or 'metal'
+subobjects of the colors API.
+
+=item $api->anetcolor->compositeColorShiftRgb( \@base_rgb, \@transform_matrix )
+
+Takes a transformation matrix generated by the C<colorShiftMatrix> method and
+applies it to an RGB color. Returns the transformed RGB values as an array.
+
+=item $api->anetcolor->matrix_multiply( \@matrixA, \@matrixB )
+
+Multiplies two matrices. Returns the result as an arrayref.
+
+=item $api->anetcolor->matrix_count_rows_cols( \@matrix )
+
+Retruns an array listing the number of rows and columns in the matrix.
+
+=item $api->anetcolor->generate_guild_emblem( %guild_details )
+
+Generates a guild emblem image based on emblem information from the
+guild_details API. Requires the Image::Magick module and a set of guild emblem
+textures extracted from the game.  ImageMagick can be downloaded from
+L<http://www.imagemagick.org>, and a zip archive containing the textures can be
+found in this module's repository on GitHub.
+
+=back
+
+=cut
+
+# And the final stuff!
+
+=pod
 
 =head1 Author
 

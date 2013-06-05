@@ -1,7 +1,7 @@
 GW2API.pm
 =========
 
-GW2API is a class module that provides a set of standard interfaces to the Guild 
+GW2API is a class module that provides a set of standard interfaces to the Guild
 Wars 2 API.
 
 Usage
@@ -12,21 +12,27 @@ See [GW2API.pod](GW2API.pod) for full documentation.
 Prerequisites
 -------------
 
-GW2API was written using Perl 5.16.  It uses the smartmatch operator (~~), thus 
-it requires at least Perl 5.10.1. It should work with all versions after that, 
+GW2API was written using Perl 5.16.3. It uses the smartmatch operator (~~), thus
+it requires at least Perl 5.10.1. It should work with all versions after that,
 although this hasn't been tested.
 
 GW2API requires the following modules, available from CPAN:
 
 * [CHI](http://search.cpan.org/~jswartz/CHI-0.56/lib/CHI.pm)
-* [JSON::XS](http://search.cpan.org/~mlehmann/JSON-XS-2.34/XS.pm)
+* [JSON::PP](http://search.cpan.org/~makamaka/JSON-PP-2.27202/lib/JSON/PP.pm) (this is a core module from Perl 5.13.9)
 * [LWP::UserAgent](search.cpan.org/~gaas/libwww-perl-6.05/lib/LWP/UserAgent.pm)
+
+Optionally, [ImageMagick](http://www.imagemagick.org) and the Image::Magick
+module is required if you wish to generate guild emblem images directly from
+GW2API.
 
 COPYRIGHT AND LICENSE
 ---------------------
 
-Copyright 2013 by Tony Tauer
+Copyright 2013 by Tony Tauer ([User:Dr
+ishmael](http://wiki.guildwars2.com/wiki/User:Dr_ishmael) on [Guild Wars 2
+Wiki](http://wiki.guildwars2.com/wiki/))
 
-This library is free software; you can redistribute it and/or modify it under 
-the same terms as Perl itself. 
+This library is free software; you can redistribute it and/or modify it under
+the same terms as Perl itself.
 
