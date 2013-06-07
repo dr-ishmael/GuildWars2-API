@@ -868,7 +868,7 @@ the main structure):
    armor =>
      {
        type           => [STRING],  # Armor type***
-       weight_class   => [STRING],  # Armor weight class (Light, Medium, Heavy)
+       weight_class   => [STRING],  # Armor weight class (Light, Medium, Heavy, Clothing)
        defense        => [INT],     # Defense value
        infusion_slots => @( ),      # Infusion slots***
        infix_upgrade  => %( ),      # Infix upgrade***
@@ -929,6 +929,7 @@ the main structure):
        type           => [STRING],        # Upgrade type (Default, Gem, Rune, Sigil)
        flags          => @([STRING],...), # Upgrade flags***
        infusion_upgrade_flags => @([STRING],...), # Infusion flags (Defense, Offense, Utility)
+       bonuses        => @([STRING],...), # Rune bonuses
        infix_upgrade  => %( ),            # Infix upgrade***
        suffix         => [STRING],        # Suffix bestowed by the upgrade
      }
@@ -1239,7 +1240,7 @@ sub colors {
     $lang = $self->{language};
   }
 
-  my $json = $self->_api_request($self->$_url_colors, { lang => $lang } );
+  my $json = $self->_api_request($_url_colors, { lang => $lang } );
 
   return %{$json->{colors}};
 }

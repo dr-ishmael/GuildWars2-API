@@ -17,7 +17,7 @@ $known_subkeys{Bag}               = { map { $_ => 1} qw(no_sell_or_sort size) };
 $known_subkeys{Consumable}        = { map { $_ => 1} qw(description duration_ms) };
 $known_subkeys{Tool}              = { map { $_ => 1} qw(charges) };
 $known_subkeys{Trinket}           = { map { $_ => 1} qw(infix_upgrade infusion_slots suffix_item_id) };
-$known_subkeys{UpgradeComponent}  = { map { $_ => 1} qw(flags infix_upgrade infusion_upgrade_flags suffix) };
+$known_subkeys{UpgradeComponent}  = { map { $_ => 1} qw(bonuses flags infix_upgrade infusion_upgrade_flags suffix) };
 $known_subkeys{Weapon}            = { map { $_ => 1} qw(damage_type defense infix_upgrade infusion_slots max_power min_power suffix_item_id) };
 
 my %types = (
@@ -68,6 +68,7 @@ open(OWEAPN, $mode, "item_weapons.csv") or die "unable to open file: $!\n";
 
 open(OATTRB, $mode, "item_attributes.csv") or die "unable to open file: $!\n";
 open(OINFSN, $mode, "item_infusions.csv") or die "unable to open file: $!\n";
+open(ORNBNS, $mode, "item_rune_bonuses.csv") or die "unable to open file: $!\n";
 
 open(OKEYS, $mode, "all_item_keys.csv") or die "unable to open file: $!\n";
 
@@ -82,6 +83,7 @@ if ($mode eq ">") {
   print OTRNKT "item_id|suffix_item_id|type|buff_skill_id|buff_desc\n";
   print OUPGRD "item_id|flags|infusion_upgrade_flags|suffix|type|buff_skill_id|buff_desc\n";
   print OWEAPN "item_id|damage_type|defense|max_power|min_power|suffix_item_id|type|buff_skill_id|buff_desc\n";
+  print ORNBNS "item_id|bonus_1|bonus_2|bonus_3|bonus_4|bonus_5|bonus_6\n";
 
   print OATTRB "item_id|attribute|modifier\n";
   print OINFSN "item_id|infusion_slot_flags\n";
@@ -213,6 +215,7 @@ foreach my $item_id ($api->items()) {
     my $flags                   = $type_data->{flags};
     my $infix_upgrade           = $type_data->{infix_upgrade};
     my $infusion_upgrade_flags  = $type_data->{infusion_upgrade_flags};
+    my $bonuses                 = $type_data->{bonuses};
     my $suffix                  = $type_data->{suffix};
 
     my ( $buff_skill_id, $buff_desc ) = process_infix($item_id, $infix_upgrade);
@@ -222,6 +225,9 @@ foreach my $item_id ($api->items()) {
                . join(',', @$infusion_upgrade_flags) . '|'
                . "$suffix|$upgrade_type|$buff_skill_id|$buff_desc\n";
 
+    if (defined($bonuses)) {
+      print ORNBNS "$item_id|" . join('|', @$bonuses) . "\n";
+    }
   }
 
   #
