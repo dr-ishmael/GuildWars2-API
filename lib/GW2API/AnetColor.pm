@@ -39,6 +39,16 @@ sub _elem
 sub emblem_texture_folder { shift->_elem('emblem_texture_folder'    ,@_); }
 sub emblem_output_folder  { shift->_elem('emblem_output_folder'    ,@_); }
 
+sub rgb2hex {
+  my ($self, $r, $g, $b) = @_;
+
+  my ($r2, $g2, $b2) = map { sprintf "%02X", int($_) } ($r, $g, $b);
+
+  my $hexstring = $r2.$g2.$b2;
+
+  return $hexstring;
+}
+
 sub matrix_multiply {
   my ($self, $r_mat1, $r_mat2);
     if (ref($_[0]) eq "GW2API::AnetColor") {
