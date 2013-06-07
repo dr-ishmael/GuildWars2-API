@@ -26,9 +26,13 @@ foreach my $color_id (sort { $a <=> $b } keys %colors) {
   $leather = join(",",@$leather);
   $metal = join(",",@$metal);
 
-  my @cloth_calc   = $api->anetcolor->compositeColorShiftRgb($color->{base_rgb},$color->{cloth});
-  my @leather_calc = $api->anetcolor->compositeColorShiftRgb($color->{base_rgb},$color->{leather});
-  my @metal_calc   = $api->anetcolor->compositeColorShiftRgb($color->{base_rgb},$color->{metal});
+  my @cloth_matrix   = $api->anetcolor->colorShiftMatrix($color->{cloth});
+  my @leather_matrix = $api->anetcolor->colorShiftMatrix($color->{leather});
+  my @metal_matrix   = $api->anetcolor->colorShiftMatrix($color->{metal});
+
+  my @cloth_calc   = $api->anetcolor->compositeColorShiftRgb($color->{base_rgb},\@cloth_matrix);
+  my @leather_calc = $api->anetcolor->compositeColorShiftRgb($color->{base_rgb},\@leather_matrix);
+  my @metal_calc   = $api->anetcolor->compositeColorShiftRgb($color->{base_rgb},\@metal_matrix);
 
   my $cloth_calc    = join(',', @cloth_calc);
   my $leather_calc  = join(',', @leather_calc);
