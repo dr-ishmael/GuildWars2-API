@@ -1327,13 +1327,18 @@ Multiplies two matrices. Returns the result as an arrayref.
 
 Retruns an array listing the number of rows and columns in the matrix.
 
-=item $api->anetcolor->generate_guild_emblem( %guild_details )
+=item $api->anetcolor->generate_guild_emblem( \%guild_details, \%colors )
 
 Generates a guild emblem image based on emblem information from the
-guild_details API. Requires the Image::Magick module and a set of guild emblem
-textures extracted from the game.  ImageMagick can be downloaded from
-L<http://www.imagemagick.org>, and a zip archive containing the textures can be
-found in this module's repository on GitHub.
+guild_details API and color information from the colors API.
+
+Requires the Image::Magick module, which can be downloaded from
+L<http://www.imagemagick.org>.
+
+Also requires a set of guild emblem textures extracted from the game. A zip
+archive of such can be found in this module's repository on GitHub. Unzip the
+archive to a folder, then provide the path to that folder as the value for
+I<emblem_texture_folder> in the API object's configuration.
 
 =back
 

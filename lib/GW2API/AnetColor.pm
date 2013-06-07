@@ -9,7 +9,7 @@ use 5.14.0;
 use List::Util qw/max min/;
 
 # only include ImageMagick if the generate_guild_emblem method is called
-use autouse 'Image::Magick';
+my $generate_ok = eval {require Image::Magick} ? 1 : 0;
 
 use constant PI => 4 * atan2(1, 1);
 
@@ -163,7 +163,9 @@ sub compositeColorShiftRgb {
 }
 
 sub generate_guild_emblem {
-  my ($self, %guild_details) = @_;
+  my ($self, $guild_details, $colors) = @_;
+
+  Carp::croak("ImageMagick is not installed, you can't generate guild emblems!") if !$generate_ok;
 
   Carp::croak("You must supply a value for the emblem_texture_folder configuration option in order to generate guild emblems.")
     if !defined($self->{emblem_texture_folder});
@@ -188,30 +190,28 @@ sub generate_guild_emblem {
   Carp::croak("emblem_output_folder [$of] is not a directory!") if ! -d $of;
   Carp::croak("emblem_output_folder [$of] is not writable!")    if ! -w $of;
 
-  my $guild_id        = $guild_details{guild_id};
+  my $guild_id        = $guild_details->{guild_id};
 
-  my $bg_id           = $guild_details{emblem}->{background_id};
-  my $fg_id           = $guild_details{emblem}->{foreground_id};
-  my $bg_color_id     = $guild_details{emblem}->{background_color_id};
-  my $fg_color_id1    = $guild_details{emblem}->{foreground_primary_color_id};
-  my $fg_color_id2    = $guild_details{emblem}->{foreground_secondary_color_id};
-  my $flags           = $guild_details{emblem}->{flags};
+  my $bg_id           = $guild_details->{emblem}->{background_id};
+  my $fg_id           = $guild_details->{emblem}->{foreground_id};
+  my $bg_color_id     = $guild_details->{emblem}->{background_color_id};
+  my $fg_color_id1    = $guild_details->{emblem}->{foreground_primary_color_id};
+  my $fg_color_id2    = $guild_details->{emblem}->{foreground_secondary_color_id};
+  my $flags           = $guild_details->{emblem}->{flags};
 
   my $base_png        = $fg_id.".png";
   my $primary_mask    = $fg_id."a.png";
   my $secondary_mask  = $fg_id."b.png";
   my $bg_png          = $bg_id.".png";
 
-  my %colors = $self->SUPER::colors;
-
-  my $b_material = $colors{$bg_color_id}->{cloth};
-  my $p_material = $colors{$fg_color_id1}->{cloth};
-  my $s_material = $colors{$fg_color_id2}->{cloth};
+  my $b_material = $colors->{$bg_color_id}->{cloth};
+  my $p_material = $colors->{$fg_color_id1}->{cloth};
+  my $s_material = $colors->{$fg_color_id2}->{cloth};
 
   my $image = Image::Magick->new;
   $image->Set(size=>'256x256');
 
-  $image->Read(
+  my $error = $image->Read(
     'xc:none',                                # 0
     $tf."/guild emblems/".$base_png,          # 1
     $tf."/guild emblems/".$primary_mask,      # 2
@@ -221,6 +221,7 @@ sub generate_guild_emblem {
     $tf."/guild emblem backgrounds/".$bg_png  # 6
   );
 
+  Carp::croak($error) if $error;
 
   # Mask primary color zone onto base canvas
   $image->[2]->Level(levels=>"50%,50%");
@@ -234,7 +235,7 @@ sub generate_guild_emblem {
 
 
   # Primary
-  my @p_matrix = $self->anetcolor->colorShiftMatrix($p_material);
+  my @p_matrix = $self->colorShiftMatrix($p_material);
   foreach my $x ( 0 .. 256 ) {
     foreach my $y ( 0 .. 256 ) {
       my ($alpha) = $image->[2]->getPixel(x=>$x, y=>$y);
@@ -244,7 +245,7 @@ sub generate_guild_emblem {
 
         @rgb = map { $_ * 255} @rgb;
 
-        my @rgb2 = $self->anetcolor->compositeColorShiftRgb(\@rgb,\@p_matrix);
+        my @rgb2 = $self->compositeColorShiftRgb(\@rgb,\@p_matrix);
 
         @rgb2 = map { $_ / 255} @rgb2;
 
@@ -254,7 +255,7 @@ sub generate_guild_emblem {
   }
 
   # Secondary
-  my @s_matrix = $self->anetcolor->colorShiftMatrix($s_material);
+  my @s_matrix = $self->colorShiftMatrix($s_material);
   foreach my $x ( 0 .. 256 ) {
     foreach my $y ( 0 .. 256 ) {
       my ($alpha) = $image->[5]->getPixel(x=>$x, y=>$y);
@@ -264,7 +265,7 @@ sub generate_guild_emblem {
 
         @rgb = map { $_ * 255} @rgb;
 
-        my @rgb2 = $self->anetcolor->compositeColorShiftRgb(\@rgb,\@s_matrix);
+        my @rgb2 = $self->compositeColorShiftRgb(\@rgb,\@s_matrix);
 
         @rgb2 = map { $_ / 255} @rgb2;
 
@@ -274,7 +275,7 @@ sub generate_guild_emblem {
   }
 
   # Background
-  my @b_matrix = $self->anetcolor->colorShiftMatrix($b_material);
+  my @b_matrix = $self->colorShiftMatrix($b_material);
   foreach my $x ( 0 .. 256 ) {
     foreach my $y ( 0 .. 256 ) {
       my ($alpha) = $image->[6]->getPixel(x=>$x, y=>$y);
@@ -284,7 +285,7 @@ sub generate_guild_emblem {
 
         @rgb = map { $_ * 255} @rgb;
 
-        my @rgb2 = $self->anetcolor->compositeColorShiftRgb(\@rgb,\@b_matrix);
+        my @rgb2 = $self->compositeColorShiftRgb(\@rgb,\@b_matrix);
 
         @rgb2 = map { $_ / 255} @rgb2;
 

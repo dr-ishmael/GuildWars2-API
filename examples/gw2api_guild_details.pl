@@ -7,8 +7,10 @@ use GW2API;
 
 my $api = GW2API->new;
 
-$api->emblem_texture_folder("C:/Users/ttauer/Pictures/GW2");
-$api->emblem_output_folder("C:/Users/ttauer/Documents/scripts/GW2API/guild emblems");
+#$api->emblem_texture_folder("C:/Users/ttauer/Pictures/GW2");
+#$api->emblem_output_folder("C:/Users/ttauer/Documents/scripts/GW2API/guild emblems");
+$api->emblem_texture_folder("C:/Users/Tony/Pictures/GW2");
+$api->emblem_output_folder("C:/Users/Tony/Documents/GW2W/api/guild emblems");
 
 my $q = CGI->new;
 
@@ -28,6 +30,8 @@ if (-e "guild_details.csv") {
 
   close (IMAIN);
 }
+
+my %colors = $api->colors;
 
 open(OMAIN, ">guild_details.csv") or die "unable to open file: $!\n";
 
@@ -84,7 +88,7 @@ foreach my $guild_id (@known_guilds) {
 
   # Generate guild emblems
   if ($emblem_fg ne "") {
-    $api->anetcolor->generate_guild_emblem(%guild_details);
+    $api->anetcolor->generate_guild_emblem(\%guild_details, \%colors);
 #    system("perl C:\\Users\\ttauer\\Documents\\GitHub\\GW2API.pm\\examples\\gw2api_colorize_emblem.pl $guild_id")
 #      == 0 or die "emblem generation failed for guild_id [$guild_id]\n";
   }
