@@ -11,14 +11,14 @@ sub process_infix($$);
 my %known_keys = map { $_ => 1 } qw(armor back bag consumable container crafting_material description flags game_types gathering gizmo item_id level name rarity restrictions tool trinket trophy type upgrade_component vendor_value weapon);
 
 my %known_subkeys = ();
-$known_subkeys{Armor}             = { map { $_ => 1} qw(defense infix_upgrade infusion_slots suffix_item_id weight_class) };
+$known_subkeys{Armor}             = { map { $_ => 1} qw(defense infix_upgrade infusion_slots suffix_item_id type weight_class) };
 $known_subkeys{Back}              = { map { $_ => 1} qw(infix_upgrade infusion_slots suffix_item_id) };
 $known_subkeys{Bag}               = { map { $_ => 1} qw(no_sell_or_sort size) };
-$known_subkeys{Consumable}        = { map { $_ => 1} qw(description duration_ms) };
-$known_subkeys{Tool}              = { map { $_ => 1} qw(charges) };
-$known_subkeys{Trinket}           = { map { $_ => 1} qw(infix_upgrade infusion_slots suffix_item_id) };
-$known_subkeys{UpgradeComponent}  = { map { $_ => 1} qw(bonuses flags infix_upgrade infusion_upgrade_flags suffix) };
-$known_subkeys{Weapon}            = { map { $_ => 1} qw(damage_type defense infix_upgrade infusion_slots max_power min_power suffix_item_id) };
+$known_subkeys{Consumable}        = { map { $_ => 1} qw(color_id description duration_ms recipe_id type unlock_type) };
+$known_subkeys{Tool}              = { map { $_ => 1} qw(charges type) };
+$known_subkeys{Trinket}           = { map { $_ => 1} qw(infix_upgrade infusion_slots suffix_item_id type) };
+$known_subkeys{UpgradeComponent}  = { map { $_ => 1} qw(bonuses flags infix_upgrade infusion_upgrade_flags suffix type) };
+$known_subkeys{Weapon}            = { map { $_ => 1} qw(damage_type defense infix_upgrade infusion_slots max_power min_power suffix_item_id type) };
 
 my %types = (
   'Armor'             => 'armor',
@@ -78,7 +78,7 @@ if ($mode eq ">") {
   print OARMOR "item_id|defense|suffix_item_id|weight_class|buff_skill_id|buff_desc\n";
   print OBACKX "item_id|suffix_item_id|buff_skill_id|buff_desc\n";
   print OBAGSX "item_id|no_sell_or_sort|size\n";
-  print OCONSM "item_id|type|duration_ms|description\n";
+  print OCONSM "item_id|type|duration_ms|description|unlock_type|color_id|recipe_id\n";
   print OTOOLX "item_id|type|charges\n";
   print OTRNKT "item_id|suffix_item_id|type|buff_skill_id|buff_desc\n";
   print OUPGRD "item_id|flags|infusion_upgrade_flags|suffix|type|buff_skill_id|buff_desc\n";
@@ -173,10 +173,13 @@ foreach my $item_id ($api->items()) {
     my $consumable_type     = $type_data->{type};
     my $duration_ms         = $type_data->{duration_ms} || "";
     my $cons_desc           = $type_data->{description} || "";
+    my $unlock_type         = $type_data->{unlock_type} || "";
+    my $color_id            = $type_data->{color_id} || "";
+    my $recipe_id           = $type_data->{recipe_id} || "";
 
     $cons_desc =~ s/\n/<br>/g;
 
-    print OCONSM "$item_id|$consumable_type|$duration_ms|$cons_desc\n";
+    print OCONSM "$item_id|$consumable_type|$duration_ms|$cons_desc|$unlock_type|$color_id|$recipe_id\n";
 
   }
 
@@ -256,7 +259,6 @@ foreach my $item_id ($api->items()) {
 
   if (ref($type_data) eq "HASH") {
     foreach my $key (keys $type_data) {
-      next if $key eq "type";
       next if (exists($known_subkeys{$type}{$key}));
       print OKEYS "$item_id|$type|$key\n";
     }

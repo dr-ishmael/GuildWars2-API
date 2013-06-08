@@ -26,7 +26,7 @@ if (defined($ARGV[0]) && $ARGV[0] eq "clean") {
 
 open(OMAIN, $mode, "recipes.csv") or die "unable to open file: $!\n";
 
-open(ORECIP, $mode, "recipe_ingredientss.csv") or die "unable to open file: $!\n";
+open(ORECIP, $mode, "recipe_ingredients.csv") or die "unable to open file: $!\n";
 
 if ($mode eq ">") {
   print OMAIN "recipe_id|type|output_item_id|output_item_count|min_rating|time_to_craft_ms|disciplines|flags\n";

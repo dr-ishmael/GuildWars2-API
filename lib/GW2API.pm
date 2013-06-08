@@ -894,6 +894,9 @@ the main structure):
        duration_ms  => [INT],       # Duration of nourishment effect
        description  => [STRING],    # Description of nourishment effect
                                     # (Nourishment effects are only on Food and Utility consumables)
+       unlock_type  => [STRING],    # Unlock subtype (BagSlot, BankTab, CraftingRecipe, Dye)
+       color_id     => [INT],       # Color_id unlocked by a Dye (cf. $api->colors)
+       recipe_id    => [INT],       # Recipe_id unlocked by a CraftingRecipe (cf. $api->recipe_details)
      }
 
    container =>
