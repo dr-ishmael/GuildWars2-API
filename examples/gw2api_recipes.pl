@@ -26,12 +26,12 @@ if (defined($ARGV[0]) && $ARGV[0] eq "clean") {
 
 open(OMAIN, $mode, "recipes.csv") or die "unable to open file: $!\n";
 
-open(ORECIP, $mode, "recipe_ingredients.csv") or die "unable to open file: $!\n";
+open(OINGRD, $mode, "recipe_ingredients.csv") or die "unable to open file: $!\n";
 
 if ($mode eq ">") {
   print OMAIN "recipe_id|type|output_item_id|output_item_count|min_rating|time_to_craft_ms|disciplines|flags\n";
 
-  print ORECIP "recipe_id|item_id|count\n";
+  print OINGRD "recipe_id|item_id|count\n";
 }
 
 my $i = 0;
@@ -59,7 +59,7 @@ foreach $recipe_id ($api->recipes()) {
     my $item_id = $ingredient->{item_id};
     my $count   = $ingredient->{count};
 
-    print ORECIP "$recipe_id|$item_id|$count\n";
+    print OINGRD "$recipe_id|$item_id|$count\n";
   }
 
   print "$i\n" if ($i++ % 1000) == 0;
@@ -68,7 +68,7 @@ foreach $recipe_id ($api->recipes()) {
 print "$i recipes processed.\n";
 
 close (OMAIN);
-close (ORECIP);
+close (OINGRD);
 
 exit;
 

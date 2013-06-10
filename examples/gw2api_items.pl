@@ -15,6 +15,9 @@ $known_subkeys{Armor}             = { map { $_ => 1} qw(defense infix_upgrade in
 $known_subkeys{Back}              = { map { $_ => 1} qw(infix_upgrade infusion_slots suffix_item_id) };
 $known_subkeys{Bag}               = { map { $_ => 1} qw(no_sell_or_sort size) };
 $known_subkeys{Consumable}        = { map { $_ => 1} qw(color_id description duration_ms recipe_id type unlock_type) };
+$known_subkeys{Container}         = { map { $_ => 1} qw(type) };
+$known_subkeys{Gathering}         = { map { $_ => 1} qw(type) };
+$known_subkeys{Gizmo}             = { map { $_ => 1} qw(type) };
 $known_subkeys{Tool}              = { map { $_ => 1} qw(charges type) };
 $known_subkeys{Trinket}           = { map { $_ => 1} qw(infix_upgrade infusion_slots suffix_item_id type) };
 $known_subkeys{UpgradeComponent}  = { map { $_ => 1} qw(bonuses flags infix_upgrade infusion_upgrade_flags suffix type) };

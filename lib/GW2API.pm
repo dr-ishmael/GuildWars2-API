@@ -457,8 +457,8 @@ sub _api_request {
       }
     }
 
-    # If no response after using up retries, die
-    die $response->status_line() if !defined $response;
+    # If no response or error after using up retries, die
+    die $response->status_line() if !defined $response || (ref($response) eq "HTTP::Response" && $response->is_error());
 
     # Set the CHI cache for this $_url for efficient future access
     $cache_age = $self->{cache_age} unless defined $cache_age;
@@ -466,9 +466,6 @@ sub _api_request {
   }
 
   my $decoded = $self->json->decode ($response) || Carp::croak("could not decode JSON: $!");
-
-  Carp::croak("Error [$decoded->{text}] returned from $interface for parameters: $parm_string")
-    if ref($decoded) eq "HASH" && defined $decoded->{error};
 
   return $decoded;
 }

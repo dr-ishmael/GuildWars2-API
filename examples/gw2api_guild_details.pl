@@ -15,17 +15,19 @@ $api->emblem_output_folder("C:/Users/Tony/Documents/GW2W/api/guild emblems");
 my $q = CGI->new;
 
 my @prior_ids = ();
+my %prior_hash = ();
 
 # Read in guild IDs that have already been processed.
 if (-e "guild_details.csv") {
   print "Reading known guilds from guild_details.csv...\n";
   open (IMAIN, "guild_details.csv") or die "unable to open file: $!\n";
 
-  <IMAIN>; # throw out the header row
-
   while (<IMAIN>) {
+    next if /^guild_id/; # skip anything that looks like a header row
+
     my ($id) = split(/\|/, $_);
     push @prior_ids, $id;
+    $prior_hash{$id} = $_;
   }
 
   close (IMAIN);
@@ -33,7 +35,7 @@ if (-e "guild_details.csv") {
 
 my %colors = $api->colors;
 
-open(OMAIN, ">guild_details.csv") or die "unable to open file: $!\n";
+open(OMAIN, ">guild_details_new.csv") or die "unable to open file: $!\n";
 
 print OMAIN "guild_id|guild_name|guild_tag|emblem_bg|emblem_bg_color|emblem_fg|emblem_fg_color1|emblem_fg_color2|flags\n";
 
@@ -82,16 +84,17 @@ foreach my $guild_id (@known_guilds) {
   my $emblem_fg_color2  = $guild_details{emblem}->{foreground_secondary_color_id} || "";
   my $emblem_flags      = $guild_details{emblem}->{flags} || [];
 
-  print OMAIN "$guild_id|$guild_name|$guild_tag|$emblem_bg|$emblem_bg_color|$emblem_fg|$emblem_fg_color1|$emblem_fg_color2"
-            . "|" . join(",", @$emblem_flags)
-            . "\n";
+  my $current_details = "$guild_id|$guild_name|$guild_tag|$emblem_bg|$emblem_bg_color|$emblem_fg|$emblem_fg_color1|$emblem_fg_color2"
+                      . "|" . join(",", @$emblem_flags)
+                      . "\n";
 
   # Generate guild emblems
-  if ($emblem_fg ne "") {
+  my $prior_details = $prior_hash{$guild_id};
+  if ( (!defined($prior_details) || $prior_details ne $current_details || ! -e $api->emblem_output_folder . "/$guild_id.png") && $emblem_fg ne "") {
     $api->anetcolor->generate_guild_emblem(\%guild_details, \%colors);
-#    system("perl C:\\Users\\ttauer\\Documents\\GitHub\\GW2API.pm\\examples\\gw2api_colorize_emblem.pl $guild_id")
-#      == 0 or die "emblem generation failed for guild_id [$guild_id]\n";
   }
+
+  print OMAIN $current_details;
 
   print OHTML $q->Tr(
     $q->td($guild_id),
@@ -103,7 +106,17 @@ foreach my $guild_id (@known_guilds) {
   print "$i\n" if ++$i % 25 == 0;
 }
 
+my $new_guilds = $i - scalar(@prior_ids);
+
+print "$new_guilds new guilds, $i total guilds\n";
+
 close (OMAIN);
+
+unlink "guild_details.csv.bak" || die "unable to delete file: $!\n";
+
+rename "guild_details.csv", "guild_details.csv.bak" || die "unable to rename file: $!\n";
+
+rename "guild_details_new.csv", "guild_details.csv" || die "unable to rename file: $!\n";
 
 exit;
 
