@@ -10,6 +10,7 @@ use CHI;
 use JSON::PP;
 use List::Util qw/max min/;
 use LWP::UserAgent;
+use MIME::Base64;
 
 use GW2API::AnetColor;
 
@@ -523,6 +524,126 @@ sub language              { shift->_elem('language'    ,@_); }
 sub emblem_texture_folder { shift->anetcolor->_elem('emblem_texture_folder'    ,@_); }
 sub emblem_output_folder  { shift->anetcolor->_elem('emblem_output_folder'    ,@_); }
 
+
+
+####################
+# Auxiliary methods
+####################
+
+=pod
+
+=head2 Auxiliary methods
+
+=over
+
+=item $api->encode_game_link( $type, $id )
+=item $api->encode_game_link( \%item_details )
+=item $api->encode_game_link( \%recipe_details )
+
+Generates a game link (e.g. [&AgH1WQAA]), returned as a string, from the type
+and ID provided. You can also pass in a reference to an item_details or
+recipe_details hash, and the type will be detected automatically.
+
+Known types are listed below; both the numeric and string representations are
+supported.
+
+ Numeric   String
+ -------   ------
+       1   coin
+       2   item
+       3   text
+       4   map
+       6   skill
+       8   trait
+       9   recipe
+
+=cut
+
+sub encode_game_link {
+  my ($self, $a, $b) = @_;
+
+  my ($type, $id);
+
+  if (ref($a) eq "HASH") {
+    if(defined($a->{item_id})) {
+      $type = 2;
+      $id = $a->{item_id};
+    } elsif (defined($a->{recipe_id})) {
+      $type = 9;
+      $id = $a->{recipe_id};
+    } else {
+      Carp::croak("Unrecognized structure (not item or recipe) passed to encode_game_link()");
+    }
+  } elsif (ref($a)) {
+    Carp::croak("First argument to encode_game_link() must be scalar or hash ref; found " . ref($a));
+  } else {
+    for (lc($a)) {
+      $type = 1 when 'coin';
+      $type = 2 when 'item';
+      $type = 3 when 'text';
+      $type = 4 when 'map';
+      # $type = 5 when ???;
+      $type = 6 when 'skill';
+      # $type = 7 when 'player';
+      $type = 8 when 'trait';
+      $type = 9 when 'recipe';
+      $type = $a when /[1234689]/;
+      default { Carp::croak("Unrecognized type [$a] passed to encode_game_link()") }
+    }
+    $id = $b;
+  }
+
+  $type = sprintf('%02x',$type);
+  $type .= '01' if $type eq '02'; # use default quantity of 1 for item links
+
+  $id = sprintf('%08x',$id);
+  $id = substr($id,6,2) . substr($id,4,2) . substr($id,2,2) . substr($id,0,2);
+
+  my $game_link;
+
+  $game_link = '[&' . encode_base64( pack('H*', $type.$id), '' ) . ']';
+
+  return $game_link;
+}
+
+=pod
+
+=item $api->decode_game_link( $game_link )
+
+Decodes a game link and returns an array containing the type and ID of the
+referenced game resource. If the type is 2 (item), the array contains a third
+element containing the quantity encoded in the link.
+
+=cut
+
+sub decode_game_link {
+  my ($self, $game_link) = @_;
+
+  my @decoded = unpack('(H2)*', decode_base64($game_link));
+
+  my $type = hex shift @decoded;
+
+  my $quantity;
+
+  $quantity = hex shift @decoded if $type == 2;
+
+  my $id4 = shift @decoded;
+  my $id3 = shift @decoded;
+  my $id2 = shift @decoded;
+  my $id1 = shift @decoded;
+
+  my $id = hex $id1 . $id2 . $id3 . $id4;
+
+  my @result = ($type, $id, $quantity);
+
+  return @result;
+}
+
+=pod
+
+=back
+
+=cut
 
 ####################
 # Specific API accessors

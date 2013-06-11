@@ -52,6 +52,8 @@ This method constructs a new C<GW2API> object and returns it. Key/value pairs of
 configuration options may be provided.
 
 
+=over
+
 =item timeout [INT]
 
 The length of time, in seconds, to wait for a response from the API. Defaults to
@@ -76,34 +78,19 @@ supported languages are 'de', 'es', and 'fr'. This setting can be overridden
 when calling individual API methods.
 
 
-=item color_format [STRING]
+=item emblem_texture_folder [STRING]
 
-The format for color values returned from the colors.json API. Default is
-'rgbhex'.
+Local path of a folder containing guild emblem textures. Defaults to null. The
+folder should contain the subfolders "guild emblems" and "guild emblem
+backgrounds". See the C<generate_guild_emblem> method under L</AnetColor
+Methods> for details.
 
-=over
 
-=item rgb
+=item emblem_output_folder [STRING]
 
-Return RGB values normalized to 1.
-
-=item rgb255
-
-Return RGB values normalized to 255 and rounded.
-
-=item rgbhex
-
-Return RGB value converted to a 6-character hex string.
-
-=item hsl
-
-Return HSL values normalized to 1.
-
-=item hsl360
-
-Return HSL values normalized to 360/100/100 and rounded.
-
-=back
+Local path of a folder where generated guild emblems will be output. Defaults to
+null. See the C<generate_guild_emblem> method under L</AnetColor Methods> for
+details.
 
 
 =item nocache [BOOL]
@@ -142,6 +129,37 @@ will expire. Defaults to '5 minutes'.
 
 =back
 
+=back
+
+
+=head2 Subclassed objects
+
+The following classes are loaded into the constructor and can be accessed as
+"subobjects" of the main $api object.
+
+=over
+
+=item L<CHI|http://search.cpan.org/~jswartz/CHI-0.56/lib/CHI.pm> - $api->cache
+
+Interface to the file cache handler. Used for storing API responses locally.
+
+=item L<JSON::PP|http://search.cpan.org/~makamaka/JSON-PP-2.27202/lib/JSON/PP.pm> - $api->json
+
+Interface for encoding/decoding JSON strings. Used to decode the JSON responses
+from the API.
+
+=item L<LWP::UserAgent|search.cpan.org/~gaas/libwww-perl-6.05/lib/LWP/UserAgent.pm> - $api->ua
+
+HTTP interface. Used for interacting with the API.
+
+=item GW2API::AnetColor - $api->anetcolor
+
+A true subclass, this is a collection of methods for utilizing the color
+transform data returned from the colors API. See the section on L</AnetColor
+Methods> for documentation.
+
+=back
+
 
 =head1 Methods
 
@@ -167,11 +185,53 @@ Get or set the C<retries> configuration option.
 
 Get or set the C<language> configuration option.
 
-=item $api->color_format
+=item $api->emblem_texture_folder
 
-=item $api->color_format( $color_format )
+=item $api->emblem_texture_folder( $path )
 
-Get or set the C<color_format> configuration option.
+Get or set the C<emblem_texture_folder> configuration option.
+
+=item $api->emblem_output_folder
+
+=item $api->emblem_output_folder( $path )
+
+Get or set the C<emblem_output_folder> configuration option.
+
+=back
+
+
+=head2 Auxiliary methods
+
+=over
+
+=item $api->encode_game_link( $type, $id )
+=item $api->encode_game_link( \%item_details )
+=item $api->encode_game_link( \%recipe_details )
+
+Generates a game link (e.g. [&AgH1WQAA]), returned as a string, from the type
+and ID provided. You can also pass in a reference to an item_details or
+recipe_details hash, and the type will be detected automatically.
+
+Known types are listed below; both the numeric and string representations are
+supported.
+
+ Numeric   String
+ -------   ------
+       1   coin
+       2   item
+       3   text
+       4   map
+       6   skill
+       8   trait
+       9   recipe
+
+
+=item $api->decode_game_link( $game_link )
+
+Decodes a game link and returns an array containing the type and ID of the
+referenced game resource. If the type is 2 (item), the array contains a third
+element containing the quantity encoded in the link.
+
 
 =back
 
@@ -318,7 +378,7 @@ the main structure):
    armor =>
      {
        type           => [STRING],  # Armor type***
-       weight_class   => [STRING],  # Armor weight class (Light, Medium, Heavy)
+       weight_class   => [STRING],  # Armor weight class (Light, Medium, Heavy, Clothing)
        defense        => [INT],     # Defense value
        infusion_slots => @( ),      # Infusion slots***
        infix_upgrade  => %( ),      # Infix upgrade***
@@ -344,6 +404,9 @@ the main structure):
        duration_ms  => [INT],       # Duration of nourishment effect
        description  => [STRING],    # Description of nourishment effect
                                     # (Nourishment effects are only on Food and Utility consumables)
+       unlock_type  => [STRING],    # Unlock subtype (BagSlot, BankTab, CraftingRecipe, Dye)
+       color_id     => [INT],       # Color_id unlocked by a Dye (cf. $api->colors)
+       recipe_id    => [INT],       # Recipe_id unlocked by a CraftingRecipe (cf. $api->recipe_details)
      }
 
    container =>
@@ -379,6 +442,7 @@ the main structure):
        type           => [STRING],        # Upgrade type (Default, Gem, Rune, Sigil)
        flags          => @([STRING],...), # Upgrade flags***
        infusion_upgrade_flags => @([STRING],...), # Infusion flags (Defense, Offense, Utility)
+       bonuses        => @([STRING],...), # Rune bonuses
        infix_upgrade  => %( ),            # Infix upgrade***
        suffix         => [STRING],        # Suffix bestowed by the upgrade
      }
@@ -610,23 +674,28 @@ Returns a hash, keyed on color_id, containing color information for all colors
 in the game. Each entry is a hashref with the following structure:
 
  {
-   default  => [VARIES]   # Color for "default" material
-   cloth    => [VARIES]   # Color for "cloth" material
-   leather  => [VARIES]   # Color for "leather" material
-   metal    => [VARIES]   # Color for "metal" material
+   name     => [STRING],      # Color name
+   base_rgb => array([INT]),  # Base RGB color for applying transformations
+   cloth    =>                # Transformation data for cloth material
+     {
+       brightness => [FLOAT],       # Brightness shift (RGB255)
+       contrast   => [FLOAT],       # Contrast shift (RGB255)
+       hue        => [FLOAT],       # Hue shift (0 <= H <= 360)
+       saturation => [FLOAT],       # Saturation shift (0 <= S <= 1)
+       lightness  => [FLOAT],       # Lightness shift (0 <= L <= 1)
+       rgb        => array([INT]),  # Pre-calculated RGB values from the base_rgb color
+     },
+   leather  => { ... },       # Transformation data for leather material (same structure as cloth)
+   metal    => { ... },       # Transformation data for metal material (same structure as cloth)
  }
-
-The data type of each entry is based on the C<color_format> configuration
-option. For the 'rgbhex' (default) format, the entries are [STRING] containing
-the 6-character hex representation of the RGB color. For 'rgb' and 'hsl'
-formats, the entries are array([FLOAT]) containing the 3 component values; for
-rgb255 and hsl360, they are instead array([INT]).
 
 
 =item $api->guild_details( $guild_id )
+=item $api->guild_details( $guild_name )
 
-Returns a hash containing detailed information for the given guild ID. The hash
-has the following structure:
+Returns a hash containing detailed information for the given guild ID or guild
+name. If the argument doesn't match the pattern of a guild ID, it is assumed to
+be a guild name. The hash has the following structure:
 
  (
    guild_id   => [STRING],    # Guild ID
@@ -647,6 +716,47 @@ has the following structure:
 
 
 =back
+
+
+=head1 AnetColor Methods
+
+=over
+
+=item $api->anetcolor->colorShiftMatrix( \%material )
+
+Uses the color transformation data (brightness, contrast, hue, saturation,
+lightness) provided by the colors API to generate a transformation matrix,
+returned as an array. C<%material> is one of the 'cloth', 'leather', or 'metal'
+subobjects of the colors API.
+
+=item $api->anetcolor->compositeColorShiftRgb( \@base_rgb, \@transform_matrix )
+
+Takes a transformation matrix generated by the C<colorShiftMatrix> method and
+applies it to an RGB color. Returns the transformed RGB values as an array.
+
+=item $api->anetcolor->matrix_multiply( \@matrixA, \@matrixB )
+
+Multiplies two matrices. Returns the result as an arrayref.
+
+=item $api->anetcolor->matrix_count_rows_cols( \@matrix )
+
+Retruns an array listing the number of rows and columns in the matrix.
+
+=item $api->anetcolor->generate_guild_emblem( \%guild_details, \%colors )
+
+Generates a guild emblem image based on emblem information from the
+guild_details API and color information from the colors API.
+
+Requires the Image::Magick module, which can be downloaded from
+L<http://www.imagemagick.org>.
+
+Also requires a set of guild emblem textures extracted from the game. A zip
+archive of such can be found in this module's repository on GitHub. Unzip the
+archive to a folder, then provide the path to that folder as the value for
+I<emblem_texture_folder> in the API object's configuration.
+
+=back
+
 
 =head1 Author
 
