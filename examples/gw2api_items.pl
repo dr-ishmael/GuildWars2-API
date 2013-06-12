@@ -1,8 +1,8 @@
 #!perl -w
 
-use strict;
+use Modern::Perl '2012';
 
-use GW2API;
+use GuildWars2::API;
 
 sub print_attributes($$);
 sub process_equipment($$);
@@ -48,7 +48,7 @@ if (defined($ARGV[0]) && $ARGV[0] eq "clean") {
 } else {
   # Read in item IDs that have already been processed.
 
-  open (IMAIN, "items.csv") or die "unable to open file: $!\n";
+  open (IMAIN, "items.csv") or die "unable to open file: $!";
 
   while (<IMAIN>) {
     my ($id) = split(/\|/, $_);
@@ -76,25 +76,25 @@ open(ORNBNS, $mode, "item_rune_bonuses.csv") or die "unable to open file: $!\n";
 open(OKEYS, $mode, "all_item_keys.csv") or die "unable to open file: $!\n";
 
 if ($mode eq ">") {
-  print OMAIN "item_id|name|description|flags|game_types|level|rarity|restrictions|type|subtype|vendor_value\n";
+  say OMAIN "item_id|name|description|flags|game_types|level|rarity|restrictions|type|subtype|vendor_value";
 
-  print OARMOR "item_id|defense|suffix_item_id|weight_class|buff_skill_id|buff_desc\n";
-  print OBACKX "item_id|suffix_item_id|buff_skill_id|buff_desc\n";
-  print OBAGSX "item_id|no_sell_or_sort|size\n";
-  print OCONSM "item_id|type|duration_ms|description|unlock_type|color_id|recipe_id\n";
-  print OTOOLX "item_id|type|charges\n";
-  print OTRNKT "item_id|suffix_item_id|type|buff_skill_id|buff_desc\n";
-  print OUPGRD "item_id|flags|infusion_upgrade_flags|suffix|type|buff_skill_id|buff_desc\n";
-  print OWEAPN "item_id|damage_type|defense|max_power|min_power|suffix_item_id|type|buff_skill_id|buff_desc\n";
-  print ORNBNS "item_id|bonus_1|bonus_2|bonus_3|bonus_4|bonus_5|bonus_6\n";
+  say OARMOR "item_id|defense|suffix_item_id|weight_class|buff_skill_id|buff_desc";
+  say OBACKX "item_id|suffix_item_id|buff_skill_id|buff_desc";
+  say OBAGSX "item_id|no_sell_or_sort|size";
+  say OCONSM "item_id|type|duration_ms|description|unlock_type|color_id|recipe_id";
+  say OTOOLX "item_id|type|charges";
+  say OTRNKT "item_id|suffix_item_id|type|buff_skill_id|buff_desc";
+  say OUPGRD "item_id|flags|infusion_upgrade_flags|suffix|type|buff_skill_id|buff_desc";
+  say OWEAPN "item_id|damage_type|defense|max_power|min_power|suffix_item_id|type|buff_skill_id|buff_desc";
+  say ORNBNS "item_id|bonus_1|bonus_2|bonus_3|bonus_4|bonus_5|bonus_6";
 
-  print OATTRB "item_id|attribute|modifier\n";
-  print OINFSN "item_id|infusion_slot_flags\n";
+  say OATTRB "item_id|attribute|modifier";
+  say OINFSN "item_id|infusion_slot_flags";
 
-  print OKEYS "item_id|key|subkey\n";
+  say OKEYS "item_id|key|subkey";
 }
 
-my $api = GW2API->new;
+my $api = GuildWars2::API->new;
 
 my $i = 0;
 foreach my $item_id ($api->items()) {
@@ -123,12 +123,12 @@ foreach my $item_id ($api->items()) {
 
   $description =~ s/\n/<br>/g;
 
-  print OMAIN "$item_id|$name|$description|"
+  say OMAIN "$item_id|$name|$description|"
             . join(',', @$flags) . '|'
             . join(',', @$game_types) . '|'
             . "$level|$rarity|"
             . join(',', @$restrictions) . '|'
-            . "$type|$subtype|$vendor_value|\n";
+            . "$type|$subtype|$vendor_value|";
 
   #
   # Armor type data
@@ -141,7 +141,7 @@ foreach my $item_id ($api->items()) {
 
     my ( $buff_skill_id, $buff_desc ) = process_equipment($item_id,$type_data);
 
-    print OARMOR "$item_id|$defense|$suffix_item_id|$weight_class|$buff_skill_id|$buff_desc\n";
+    say OARMOR "$item_id|$defense|$suffix_item_id|$weight_class|$buff_skill_id|$buff_desc";
 
   }
 
@@ -154,7 +154,7 @@ foreach my $item_id ($api->items()) {
 
     my ( $buff_skill_id, $buff_desc ) = process_equipment($item_id,$type_data);
 
-    print OBACKX "$item_id|$suffix_item_id|$buff_skill_id|$buff_desc\n";
+    say OBACKX "$item_id|$suffix_item_id|$buff_skill_id|$buff_desc";
 
   }
 
@@ -165,7 +165,7 @@ foreach my $item_id ($api->items()) {
     my $no_sell_or_sort     = $type_data->{no_sell_or_sort};
     my $size                = $type_data->{size};
 
-    print OBAGSX "$item_id|$no_sell_or_sort|$size\n";
+    say OBAGSX "$item_id|$no_sell_or_sort|$size";
 
   }
 
@@ -182,7 +182,7 @@ foreach my $item_id ($api->items()) {
 
     $cons_desc =~ s/\n/<br>/g;
 
-    print OCONSM "$item_id|$consumable_type|$duration_ms|$cons_desc|$unlock_type|$color_id|$recipe_id\n";
+    say OCONSM "$item_id|$consumable_type|$duration_ms|$cons_desc|$unlock_type|$color_id|$recipe_id";
 
   }
 
@@ -196,7 +196,7 @@ foreach my $item_id ($api->items()) {
 
     my ( $buff_skill_id, $buff_desc ) = process_equipment($item_id,$type_data);
 
-    print OTRNKT "$item_id|$suffix_item_id|$trinket_type|$buff_skill_id|$buff_desc\n";
+    say OTRNKT "$item_id|$suffix_item_id|$trinket_type|$buff_skill_id|$buff_desc";
 
   }
 
@@ -208,7 +208,7 @@ foreach my $item_id ($api->items()) {
     my $tool_type            = $type_data->{type};
     my $charges              = $type_data->{charges};
 
-    print OTOOLX "$item_id|$tool_type|$charges\n";
+    say OTOOLX "$item_id|$tool_type|$charges";
 
   }
 
@@ -226,13 +226,13 @@ foreach my $item_id ($api->items()) {
 
     my ( $buff_skill_id, $buff_desc ) = process_infix($item_id, $infix_upgrade);
 
-    print OUPGRD "$item_id|"
+    say OUPGRD "$item_id|"
                . join(',', @$flags) . '|'
                . join(',', @$infusion_upgrade_flags) . '|'
-               . "$suffix|$upgrade_type|$buff_skill_id|$buff_desc\n";
+               . "$suffix|$upgrade_type|$buff_skill_id|$buff_desc";
 
     if (defined($bonuses)) {
-      print ORNBNS "$item_id|" . join('|', @$bonuses) . "\n";
+      say ORNBNS "$item_id|" . join('|', @$bonuses);
     }
   }
 
@@ -250,27 +250,27 @@ foreach my $item_id ($api->items()) {
 
     my ( $buff_skill_id, $buff_desc ) = process_equipment($item_id,$type_data);
 
-    print OWEAPN "$item_id|$damage_type|$defense|$max_power|$min_power|$suffix_item_id|$weapon_type|$buff_skill_id|$buff_desc\n";
+    say OWEAPN "$item_id|$damage_type|$defense|$max_power|$min_power|$suffix_item_id|$weapon_type|$buff_skill_id|$buff_desc";
 
   }
 
 
   foreach my $key (keys %item_details) {
     next if (exists($known_keys{$key}));
-    print OKEYS "$item_id|$key\n";
+    say OKEYS "$item_id|$key";
   }
 
   if (ref($type_data) eq "HASH") {
     foreach my $key (keys $type_data) {
       next if (exists($known_subkeys{$type}{$key}));
-      print OKEYS "$item_id|$type|$key\n";
+      say OKEYS "$item_id|$type|$key";
     }
   }
 
-  print "$i\n" if ($i++ % 1000) == 0;
+  say $i if ($i++ % 1000) == 0;
 }
 
-print "$i items processed.\n";
+say "$i items processed.";
 
 close(OMAIN);
 
@@ -298,7 +298,7 @@ sub print_attributes($$) {
     my $attr_name       = $attribute->{attribute};
     my $modifier        = $attribute->{modifier};
 
-    print OATTRB "$item_id|$attr_name|$modifier\n";
+    say OATTRB "$item_id|$attr_name|$modifier";
   }
 }
 
@@ -360,7 +360,7 @@ sub process_equipment($$) {
   foreach my $infusion_slot (@$infusion_slots) {
     my $infusion_slot_flags = join(',', @{$infusion_slot->{flags}});
 
-    print OINFSN "$item_id|$infusion_slot_flags\n";
+    say OINFSN "$item_id|$infusion_slot_flags";
   }
 
   return ( $buff_skill_id, $buff_desc );

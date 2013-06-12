@@ -527,12 +527,12 @@ sub emblem_output_folder  { shift->anetcolor->_elem('emblem_output_folder'    ,@
 
 
 ####################
-# Auxiliary methods
+# Game Link methods
 ####################
 
 =pod
 
-=head2 Auxiliary methods
+=head2 Game Link methods
 
 =over
 

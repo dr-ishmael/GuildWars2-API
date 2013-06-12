@@ -2,13 +2,13 @@
 
 =head1 NAME
 
-GW2API - An interface library for the Guild Wars 2 API
+GuildWars2::API - An interface library for the Guild Wars 2 API
 
 =head1 SYNOPSIS
 
- require GW2API;
+ use GuildWars2::API;
 
- my $api = GW2API->new;
+ my $api = GuildWars2::API->new;
 
  # Check the current state of an event on all worlds
 
@@ -37,18 +37,18 @@ GW2API - An interface library for the Guild Wars 2 API
 
 =head1 DESCRIPTION
 
-GW2API is a class module that provides a set of standard interfaces to the Guild
-Wars 2 API.
+GuildWars2::API is a class module that provides a set of standard interfaces to
+the Guild Wars 2 API.
 
 
 =head1 Constructor
 
 =over 4
 
-=item $api = GW2API->new
-=item $api = GW2API->new( key => value, ... )
+=item $api = GuildWars2::API->new
+=item $api = GuildWars2::API->new( key => value, ... )
 
-This method constructs a new C<GW2API> object and returns it. Key/value pairs of
+This method constructs a new C<GuildWars2::API> object and returns it. Key/value pairs of
 configuration options may be provided.
 
 
@@ -152,91 +152,10 @@ from the API.
 
 HTTP interface. Used for interacting with the API.
 
-=item GW2API::AnetColor - $api->anetcolor
-
-A true subclass, this is a collection of methods for utilizing the color
-transform data returned from the colors API. See the section on L</AnetColor
-Methods> for documentation.
-
 =back
 
 
 =head1 Methods
-
-=head2 Config access methods
-
-=over
-
-=item $api->timeout
-
-=item $api->timeout( $timeout )
-
-Get or set the C<timeout> configuration option.
-
-=item $api->retries
-
-=item $api->retries( $retries )
-
-Get or set the C<retries> configuration option.
-
-=item $api->language
-
-=item $api->language( $lang )
-
-Get or set the C<language> configuration option.
-
-=item $api->emblem_texture_folder
-
-=item $api->emblem_texture_folder( $path )
-
-Get or set the C<emblem_texture_folder> configuration option.
-
-=item $api->emblem_output_folder
-
-=item $api->emblem_output_folder( $path )
-
-Get or set the C<emblem_output_folder> configuration option.
-
-=back
-
-
-=head2 Auxiliary methods
-
-=over
-
-=item $api->encode_game_link( $type, $id )
-=item $api->encode_game_link( \%item_details )
-=item $api->encode_game_link( \%recipe_details )
-
-Generates a game link (e.g. [&AgH1WQAA]), returned as a string, from the type
-and ID provided. You can also pass in a reference to an item_details or
-recipe_details hash, and the type will be detected automatically.
-
-Known types are listed below; both the numeric and string representations are
-supported.
-
- Numeric   String
- -------   ------
-       1   coin
-       2   item
-       3   text
-       4   map
-       6   skill
-       8   trait
-       9   recipe
-
-
-=item $api->decode_game_link( $game_link )
-
-Decodes a game link and returns an array containing the type and ID of the
-referenced game resource. If the type is 2 (item), the array contains a third
-element containing the quantity encoded in the link.
-
-
-=back
-
-
-=head2 API methods
 
 =over
 
@@ -690,70 +609,32 @@ in the game. Each entry is a hashref with the following structure:
  }
 
 
-=item $api->guild_details( $guild_id )
-=item $api->guild_details( $guild_name )
+=item $api->get_guild( $guild_id )
+=item $api->get_guild( $guild_name )
 
-Returns a hash containing detailed information for the given guild ID or guild
-name. If the argument doesn't match the pattern of a guild ID, it is assumed to
-be a guild name. The hash has the following structure:
+Returns a C<GuildWars2::API::Guild> object containing detailed information for
+the given guild ID or guild name. If the argument doesn't match the pattern of a
+guild ID, it is assumed to be a guild name. The object contains the following
+attributes:
 
  (
    guild_id   => [STRING],    # Guild ID
    guild_name => [STRING],    # Guild name
    tag        => [STRING],    # Guild tag
-   emblem     =>              # Guild emblem data
+   emblem     =>              # GuildWars2::API::Guild::Emblem object
      {
        background_id                  => [INT]          # ID of background texture
        foreground_id                  => [INT]          # ID of foreground texture
-       flags                          => @([STRING]...) # Identify bg/fg transformations
-                                                        # (FlipBackgroundHorizontal, FlipBackgroundVertical,
-                                                        #  FlipForegroundHorizontal, FlipForegroundVertical)
+       flip_background_horizontal     => [BOOL]         # Background is flipped horizontally
+       flip_background_vertical       => [BOOL]         # Background is flipped vertically
+       flip_foreground_horizontal     => [BOOL]         # Foreground is flipped horizontally
+       flip_foreground_vertical       => [BOOL]         # Foreground is flipped vertically
        background_color_id            => [INT]          # Color ID of background color
        foreground_primary_color_id    => [INT]          # Color ID of primary foreground color
        foreground_secondary_color_id  => [INT]          # Color ID of secondary foreground color
      }
  )
 
-
-=back
-
-
-=head1 AnetColor Methods
-
-=over
-
-=item $api->anetcolor->colorShiftMatrix( \%material )
-
-Uses the color transformation data (brightness, contrast, hue, saturation,
-lightness) provided by the colors API to generate a transformation matrix,
-returned as an array. C<%material> is one of the 'cloth', 'leather', or 'metal'
-subobjects of the colors API.
-
-=item $api->anetcolor->compositeColorShiftRgb( \@base_rgb, \@transform_matrix )
-
-Takes a transformation matrix generated by the C<colorShiftMatrix> method and
-applies it to an RGB color. Returns the transformed RGB values as an array.
-
-=item $api->anetcolor->matrix_multiply( \@matrixA, \@matrixB )
-
-Multiplies two matrices. Returns the result as an arrayref.
-
-=item $api->anetcolor->matrix_count_rows_cols( \@matrix )
-
-Retruns an array listing the number of rows and columns in the matrix.
-
-=item $api->anetcolor->generate_guild_emblem( \%guild_details, \%colors )
-
-Generates a guild emblem image based on emblem information from the
-guild_details API and color information from the colors API.
-
-Requires the Image::Magick module, which can be downloaded from
-L<http://www.imagemagick.org>.
-
-Also requires a set of guild emblem textures extracted from the game. A zip
-archive of such can be found in this module's repository on GitHub. Unzip the
-archive to a folder, then provide the path to that folder as the value for
-I<emblem_texture_folder> in the API object's configuration.
 
 =back
 

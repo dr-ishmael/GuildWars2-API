@@ -1,10 +1,10 @@
 #!perl -w
 
-use strict;
+use Modern::Perl '2012';
 
-use GW2API;
+use GuildWars2::API;
 
-my $api = GW2API->new;
+my $api = GuildWars2::API->new;
 
 my $mode = ">>";
 my @prior_ids = ();
@@ -29,9 +29,9 @@ open(OMAIN, $mode, "recipes.csv") or die "unable to open file: $!\n";
 open(OINGRD, $mode, "recipe_ingredients.csv") or die "unable to open file: $!\n";
 
 if ($mode eq ">") {
-  print OMAIN "recipe_id|type|output_item_id|output_item_count|min_rating|time_to_craft_ms|disciplines|flags\n";
+  say OMAIN "recipe_id|type|output_item_id|output_item_count|min_rating|time_to_craft_ms|disciplines|flags";
 
-  print OINGRD "recipe_id|item_id|count\n";
+  say OINGRD "recipe_id|item_id|count";
 }
 
 my $i = 0;
@@ -50,22 +50,22 @@ foreach $recipe_id ($api->recipes()) {
   my $flags             = $recipe_details{flags};
   my $ingredients       = $recipe_details{ingredients};
 
-  print OMAIN "$recipe_id|$type|$output_item_id|$output_item_count|$min_rating|$time_to_craft_ms"
+  say OMAIN "$recipe_id|$type|$output_item_id|$output_item_count|$min_rating|$time_to_craft_ms"
             . "|" . join(',', @$disciplines)
             . "|" . join(',', @$flags)
-            . "\n";
+            ;
 
   foreach my $ingredient (@$ingredients) {
     my $item_id = $ingredient->{item_id};
     my $count   = $ingredient->{count};
 
-    print OINGRD "$recipe_id|$item_id|$count\n";
+    say OINGRD "$recipe_id|$item_id|$count";
   }
 
-  print "$i\n" if ($i++ % 1000) == 0;
+  say $i if ($i++ % 1000) == 0;
 }
 
-print "$i recipes processed.\n";
+say "$i recipes processed.";
 
 close (OMAIN);
 close (OINGRD);

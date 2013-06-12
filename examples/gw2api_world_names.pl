@@ -1,19 +1,19 @@
 #!perl -w
 
-use strict;
+use Modern::Perl '2012';
 
-use GW2API;
+use GuildWars2::API;
 
-my $api = GW2API->new;
+my $api = GuildWars2::API->new;
 
 open(OMAIN, ">world_names.csv") or die "unable to open file: $!\n";
 
-print OMAIN "world_id|name\n";
+say OMAIN "world_id|name";
 
 my %worlds = $api->world_names();
 
 foreach my $world_id (keys %worlds) {
-  print OMAIN "$world_id|$worlds{$world_id}\n";
+  say OMAIN "$world_id|$worlds{$world_id}";
 }
 
 close (OMAIN);
