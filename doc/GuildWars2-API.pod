@@ -6,51 +6,61 @@ GuildWars2::API - An interface library for the Guild Wars 2 API
 
 =head1 SYNOPSIS
 
- use GuildWars2::API;
+ require GuildWars2::API;
 
- my $api = GuildWars2::API->new;
+ $api = GuildWars2::API->new;
 
  # Check the current state of an event on all worlds
 
- my %event_states = $api->event_state_by_world($event_id);
+ %event_states = $api->event_state_by_world($event_id);
 
  foreach my $world_id (keys %event_states) {
      my $state = $event_states{$world_id};
 
      print "$world_id : $state\n";
-
  }
 
  # Lookup the attribute bonuses on a weapon
 
- my %item_details = $api->item_details($item_id);
+ %item_details = $api->item_details($item_id);
 
- my $attributes_ref = %item_details{weapon}->{attributes};
+ $attributes_ref = %item_details{weapon}->{attributes};
 
- foreach my $attribute (@$attributes_ref) {
-     my ($attr_name, $attr_value) =
+ foreach $attribute (@$attributes_ref) {
+     ($attr_name, $attr_value) =
           ($attribute->{attribute}, $attribute->{modifier});
 
      print "+$attr_value $attr_name\n";
-
  }
 
 =head1 DESCRIPTION
 
 GuildWars2::API is a class module that provides a set of standard interfaces to
-the Guild Wars 2 API.
-
+the L<Guild Wars 2 API|https://forum-en.guildwars2.com/forum/community/api/API-
+Documentation>.
 
 =head1 Constructor
 
-=over 4
+=over
 
 =item $api = GuildWars2::API->new
 =item $api = GuildWars2::API->new( key => value, ... )
 
-This method constructs a new C<GuildWars2::API> object and returns it. Key/value pairs of
-configuration options may be provided.
+This method constructs a new C<GuildWars2::API> object and returns it. Key/value
+pairs of configuration options may be provided, which then become class
+attributes.
 
+Each of the attributes can be accessed via an eponymous class method. Most can
+also be assigned new values in this manner, although a few attributes are
+designated read-only.
+
+ my $api = GuildWars2::API->new( timeout => 60 );
+
+ print $api->timeout;   # 60
+
+ $api->timeout(180);
+
+ print $api->timeout;   # 180
 
 =over
 
@@ -59,17 +69,9 @@ configuration options may be provided.
 The length of time, in seconds, to wait for a response from the API. Defaults to
 30.
 
-
 =item retries [INT]
 
 The number of times to attempt an API request before dying. Defaults to 3.
-
-
-=item version [STRING]
-
-The version of the API to use. Defaults to 'v1', which is the only version
-available at this time.
-
 
 =item language [STRING]
 
@@ -77,83 +79,58 @@ The language code to use for all API requests. Defaults to 'en', other
 supported languages are 'de', 'es', and 'fr'. This setting can be overridden
 when calling individual API methods.
 
-
-=item emblem_texture_folder [STRING]
-
-Local path of a folder containing guild emblem textures. Defaults to null. The
-folder should contain the subfolders "guild emblems" and "guild emblem
-backgrounds". See the C<generate_guild_emblem> method under L</AnetColor
-Methods> for details.
-
-
-=item emblem_output_folder [STRING]
-
-Local path of a folder where generated guild emblems will be output. Defaults to
-null. See the C<generate_guild_emblem> method under L</AnetColor Methods> for
-details.
-
-
 =item nocache [BOOL]
 
-Disable local caching of API responses. Defaults to undef. Using this in
+I<Read-only>. Disable local caching of API responses. Defaults to undef. Using this in
 combination with any of the following cache options will cause an error.
-
 
 =item cache_dir [STRING]
 
-The local directory to use as the cache location. Defaults to './gw2api-cache'
+I<Read-only>. The local directory to use as the cache location. Defaults to './gw2api-cache'
 and will attempt to create the directory if it does not exist.
-
 
 =item cache_age [DURATION]
 
 Length of time after which the cached responses will expire. Defaults to '24
 hours'. Accepted values are strings consisting of an integer followed by a time
-unit, e.g. '1 day' or '10 seconds'.
+unit, e.g. '1 day' or '10 seconds' etc.
 
 This applies to I<most> of the APIs; the following *_cache_age parameters
 override this setting for specific APIs.
-
 
 =item event_cache_age [DURATION]
 
 Length of time after which the cached version of I<event state> responses will
 expire. Defaults to '30 seconds'.
 
-
 =item wvw_cache_age [DURATION]
 
 Length of time after which the cached version of I<WvW match detail> responses
 will expire. Defaults to '5 minutes'.
 
-
 =back
 
 =back
-
 
 =head2 Subclassed objects
 
-The following classes are loaded into the constructor and can be accessed as
-"subobjects" of the main $api object.
+The following classes are loaded into the GuildWars2::API class and can be
+accessed as "subobjects" of the main C<$api> object.
 
 =over
 
-=item L<CHI|http://search.cpan.org/~jswartz/CHI-0.56/lib/CHI.pm> - $api->cache
+=item L<CHI> - $api->cache
 
 Interface to the file cache handler. Used for storing API responses locally.
 
-=item L<JSON::PP|http://search.cpan.org/~makamaka/JSON-PP-2.27202/lib/JSON/PP.pm> - $api->json
+=item L<JSON::PP> - $api->json
 
 Interface for encoding/decoding JSON strings. Used to decode the JSON responses
 from the API.
 
-=item L<LWP::UserAgent|search.cpan.org/~gaas/libwww-perl-6.05/lib/LWP/UserAgent.pm> - $api->ua
+=item L<LWP::UserAgent> - $api->ua
 
 HTTP interface. Used for interacting with the API.
-
-=back
-
 
 =head1 Methods
 
@@ -161,8 +138,8 @@ HTTP interface. Used for interacting with the API.
 
 =item $api->build
 
-Returns the current build number.
-
+Returns the current Guild Wars 2 build number. Useful for tracking when a game
+update is released, since the build number will change.
 
 =item $api->event_names
 =item $api->event_names( $lang )
@@ -177,9 +154,8 @@ Returns the current build number.
 =item $api->objective_names( $lang )
 
 Each of these methods returns a hash, keyed by the event/map/etc. ID, containing
-the names corresponding to those IDs. An optional language parameter can be
-passed to override the default language.
-
+the names corresponding to those IDs. Pass a language code as an argument to
+override the current default language.
 
 =item $api->event_state( $event_id, $world_id )
 
@@ -190,6 +166,7 @@ L<the official API documentation|https://forum-en.guildwars2.com/forum/community
  State        Meaning
  ------------ ---------------------------------------------------------
  Active       The event is running now.
+ Inactive     The event is not running now.
  Success      The event has succeeded.
  Fail         The event has failed.
  Warmup       The event is inactive, and will only become active once
@@ -199,18 +176,15 @@ L<the official API documentation|https://forum-en.guildwars2.com/forum/community
               completed yet. After the activites have been completed,
               the event will become Active.
 
-
 =item $api->event_state_by_world( $event_id )
 
 Returns a hash, keyed by world ID, containing the current state of the given
 event on each world.
 
-
 =item $api->event_states_in_map( $map_id, $world_id )
 
 Returns a hash, keyed by event ID, containing the current state of all events
 occurring within a specific map on a specific world.
-
 
 =item $api->wvw_matches
 
@@ -225,7 +199,6 @@ array element is a hash with the following structure:
    start_time     => [STRING],  # Date/time that current match started (UTC)
    end_time       => [STRING],  # Date/time that current match ended (UTC)
  )
-
 
 =item $api->wvw_match_details( $match_id )
 
@@ -265,11 +238,9 @@ has the following structure:
      ],
  )
 
-
 =item $api->items
 
-Returns an array containing all known item IDs.
-
+Returns an array containing all "discovered" item IDs.
 
 =item $api->item_details( $item_id )
 =item $api->item_details( $item_id, $lang )
@@ -551,11 +522,9 @@ Enumerations:
 
 =back
 
-
 =item $api->recipes
 
-Returns an array containing all known recipe IDs.
-
+Returns an array containing all "discovered" recipe IDs.
 
 =item $api->recipe_details( $recipe_id )
 =item $api->recipe_details( $recipe_id, $lang )
@@ -585,7 +554,6 @@ hash has the following structure:
      ],
  )
 
-
 =item $api->colors
 =item $api->colors( $lang )
 
@@ -608,36 +576,32 @@ in the game. Each entry is a hashref with the following structure:
    metal    => { ... },       # Transformation data for metal material (same structure as cloth)
  }
 
-
 =item $api->get_guild( $guild_id )
 =item $api->get_guild( $guild_name )
 
-Returns a C<GuildWars2::API::Guild> object containing detailed information for
-the given guild ID or guild name. If the argument doesn't match the pattern of a
-guild ID, it is assumed to be a guild name. The object contains the following
-attributes:
+Retrieves data for the given guild ID or guild name and returns an object
+containing that data. If the argument doesn't match the pattern of a guild ID,
+it is assumed to be a guild name. The object contains the following attributes:
 
  (
-   guild_id   => [STRING],    # Guild ID
-   guild_name => [STRING],    # Guild name
-   tag        => [STRING],    # Guild tag
-   emblem     =>              # GuildWars2::API::Guild::Emblem object
+   guild_id   => [STRING]   # Guild ID
+   guild_name => [STRING]   # Guild name
+   tag        => [STRING]   # Guild tag
+   emblem     =>            # Guild emblem object
      {
-       background_id                  => [INT]          # ID of background texture
-       foreground_id                  => [INT]          # ID of foreground texture
-       flip_background_horizontal     => [BOOL]         # Background is flipped horizontally
-       flip_background_vertical       => [BOOL]         # Background is flipped vertically
-       flip_foreground_horizontal     => [BOOL]         # Foreground is flipped horizontally
-       flip_foreground_vertical       => [BOOL]         # Foreground is flipped vertically
-       background_color_id            => [INT]          # Color ID of background color
-       foreground_primary_color_id    => [INT]          # Color ID of primary foreground color
-       foreground_secondary_color_id  => [INT]          # Color ID of secondary foreground color
+       background_id                  => [INT]    # ID of background texture
+       foreground_id                  => [INT]    # ID of foreground texture
+       flip_background_horizontal     => [BOOL]   # Background is flipped horizontally
+       flip_background_vertical       => [BOOL]   # Background is flipped vertically
+       flip_foreground_horizontal     => [BOOL]   # Foreground is flipped horizontally
+       flip_foreground_vertical       => [BOOL]   # Foreground is flipped vertically
+       background_color_id            => [INT]    # Color ID of background color
+       foreground_primary_color_id    => [INT]    # Color ID of primary foreground color
+       foreground_secondary_color_id  => [INT]    # Color ID of secondary foreground color
      }
  )
 
-
 =back
-
 
 =head1 Author
 
@@ -651,3 +615,5 @@ This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
 
 =cut
+
+__END__

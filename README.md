@@ -1,30 +1,42 @@
-GW2API.pm
-=========
+GuildWars2::API
+===============
 
-GW2API is a class module that provides a set of standard interfaces to the Guild
-Wars 2 API.
+GuildWars2::API is a class module that provides a set of standard interfaces to
+the [Guild Wars 2 API](https://forum-en.guildwars2.com/forum/community/api/API-
+Documentation/).
+
+Additional modules
+------------------
+
+GuildWars2::Color provides functions for working with and applying ArenaNet's
+color transformations.
+
+GuildWars2::GameLink provides functions for encoding and decoding game links
+(aka chat links).
 
 Usage
 -----
 
-See [GW2API.pod](GW2API.pod) for full documentation.
+Refer to the following POD files for full documentation:
+* [GuildWars2-API.pod](doc/GuildWars2-API.pod)
+* [GuildWars2-Colors.pod](doc/GuildWars2-Colors.pod)
+* [GuildWars2-GameLink.pod](doc/GuildWars2-GameLink.pod)
 
 Prerequisites
 -------------
 
-GW2API was written using Perl 5.16.3. It uses the smartmatch operator (~~), thus
-it requires at least Perl 5.10.1. It should work with all versions after that,
-although this hasn't been tested.
+GuildWars2::API was written using Perl 5.16.3 and requires at least Perl 5.14.0.
 
-GW2API requires the following modules, available from CPAN:
+GuildWars2::API requires the following modules, available from CPAN:
 
-* [CHI](http://search.cpan.org/~jswartz/CHI-0.56/lib/CHI.pm)
-* [JSON::PP](http://search.cpan.org/~makamaka/JSON-PP-2.27202/lib/JSON/PP.pm) (this is a core module from Perl 5.13.9)
-* [LWP::UserAgent](search.cpan.org/~gaas/libwww-perl-6.05/lib/LWP/UserAgent.pm)
+* [CHI](http://search.cpan.org/perldoc?CHI)
+* [LWP::UserAgent](http://search.cpan.org/perldoc?LWP%3A%3AUserAgent)
+* [Modern::Perl](http://search.cpan.org/perldoc?Modern%3A%3APerl)
 
 Optionally, [ImageMagick](http://www.imagemagick.org) and the Image::Magick
-module is required if you wish to generate guild emblem images directly from
-GW2API.
+module are required if you wish to generate guild emblem images directly from
+GuildWars2::API. The base textures required for this are available from this
+repository in a zip archive.
 
 COPYRIGHT AND LICENSE
 ---------------------
