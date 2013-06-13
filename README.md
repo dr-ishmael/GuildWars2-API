@@ -19,7 +19,7 @@ Usage
 
 Refer to the following POD files for full documentation:
 * [GuildWars2-API.pod](doc/GuildWars2-API.pod)
-* [GuildWars2-Colors.pod](doc/GuildWars2-Colors.pod)
+* [GuildWars2-Color.pod](doc/GuildWars2-Color.pod)
 * [GuildWars2-GameLink.pod](doc/GuildWars2-GameLink.pod)
 
 Prerequisites
