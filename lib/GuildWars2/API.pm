@@ -2,11 +2,11 @@ use Modern::Perl '2012';
 
 package GuildWars2::API;
 BEGIN {
-  $GuildWars2::API::VERSION     = '0.10';
+  $GuildWars2::API::VERSION     = '0.50';
 }
 use Carp ();
 use CHI;
-use GuildWars2::API::Guild;
+use GuildWars2::API::Objects;
 use JSON::PP;
 use List::Util qw/max min/;
 use LWP::UserAgent;
@@ -381,7 +381,12 @@ sub colors {
 
   my $json = $self->_api_request($_url_colors, { lang => $lang } );
 
-  return %{$json->{colors}};
+  my %color_objs;
+  foreach my $color_id (keys %{$json->{colors}}) {
+    $color_objs{$color_id} = GuildWars2::API::Objects::Color->new( $json->{colors}->{$color_id} );
+  }
+
+  return %color_objs;
 }
 
 
@@ -402,9 +407,9 @@ sub get_guild {
 
   my $json = $self->_api_request($_url_guild_details, { $id_or_name => $guild_id });
 
-  my $guild = GuildWars2::API::Guild->new( $json );
+  my $guild_obj = GuildWars2::API::Objects::Guild->new( $json );
 
-  return $guild;
+  return $guild_obj;
 }
 
 1;
@@ -969,48 +974,14 @@ hash has the following structure:
 =item $api->colors( $lang )
 
 Returns a hash, keyed on color_id, containing color information for all colors
-in the game. Each entry is a hashref with the following structure:
-
- {
-   name     => [STRING],      # Color name
-   base_rgb => array([INT]),  # Base RGB color for applying transformations
-   cloth    =>                # Transformation data for cloth material
-     {
-       brightness => [FLOAT],       # Brightness shift (RGB255)
-       contrast   => [FLOAT],       # Contrast shift (RGB255)
-       hue        => [FLOAT],       # Hue shift (0 <= H <= 360)
-       saturation => [FLOAT],       # Saturation shift (0 <= S <= 1)
-       lightness  => [FLOAT],       # Lightness shift (0 <= L <= 1)
-       rgb        => array([INT]),  # Pre-calculated RGB values from the base_rgb color
-     },
-   leather  => { ... },       # Transformation data for leather material (same structure as cloth)
-   metal    => { ... },       # Transformation data for metal material (same structure as cloth)
- }
+in the game. Each hash element is a GuildWars2::API::Objects::Color object.
 
 =item $api->get_guild( $guild_id )
 =item $api->get_guild( $guild_name )
 
-Retrieves data for the given guild ID or guild name and returns an object
-containing that data. If the argument doesn't match the pattern of a guild ID,
-it is assumed to be a guild name. The object contains the following attributes:
-
- (
-   guild_id   => [STRING]   # Guild ID
-   guild_name => [STRING]   # Guild name
-   tag        => [STRING]   # Guild tag
-   emblem     =>            # Guild emblem object
-     {
-       background_id                  => [INT]    # ID of background texture
-       foreground_id                  => [INT]    # ID of foreground texture
-       flip_background_horizontal     => [BOOL]   # Background is flipped horizontally
-       flip_background_vertical       => [BOOL]   # Background is flipped vertically
-       flip_foreground_horizontal     => [BOOL]   # Foreground is flipped horizontally
-       flip_foreground_vertical       => [BOOL]   # Foreground is flipped vertically
-       background_color_id            => [INT]    # Color ID of background color
-       foreground_primary_color_id    => [INT]    # Color ID of primary foreground color
-       foreground_secondary_color_id  => [INT]    # Color ID of secondary foreground color
-     }
- )
+Retrieves data for the given guild ID or guild name and returns a
+GuildWars2::API::Objects::Guild object. If the argument doesn't match the
+pattern of a guild ID, it is assumed to be a guild name.
 
 =back
 

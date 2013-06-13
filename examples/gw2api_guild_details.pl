@@ -9,11 +9,6 @@ use Win32;
 my $api = GuildWars2::API->new;
 my $q = CGI->new;
 
-#$api->emblem_texture_folder("C:/Users/ttauer/Pictures/GW2");
-#$api->emblem_output_folder("C:/Users/ttauer/Documents/scripts/GW2API/guild emblems");
-#$api->emblem_texture_folder("C:/Users/Tony/Pictures/GW2");
-#$api->emblem_output_folder("C:/Users/Tony/Documents/GW2W/api/guild emblems");
-
 my $username = Win32::LoginName;
 my $emblem_texture_folder = "C:/Users/$username/Pictures/GW2";
 my $emblem_output_folder = "./guild emblems";
@@ -44,16 +39,16 @@ open(OMAIN, ">guild_details_new.csv") or die "unable to open file: $!\n";
 
 say OMAIN "guild_id|guild_name|guild_tag|emblem_bg|emblem_fg|emblem_flip_bg_h|emblem_flip_bg_v|emblem_flip_fg_h|emblem_flip_fg_v|emblem_bg_color|emblem_fg_color1|emblem_fg_color2";
 
-#open(OHTML, ">guild_details.html") or die "unable to open file: $!\n";
-#
-#print OHTML $q->start_html();
-#print OHTML $q->start_table();
-#print OHTML $q->Tr(
-#  $q->th("Guild ID"),
-#  $q->th("Guild Name"),
-#  $q->th("Tag"),
-#  $q->th("Emblem")
-#);
+open(OHTML, ">guild_details.html") or die "unable to open file: $!\n";
+
+print OHTML $q->start_html();
+print OHTML $q->start_table();
+print OHTML $q->Tr(
+  $q->th("Guild ID"),
+  $q->th("Guild Name"),
+  $q->th("Tag"),
+  $q->th("Emblem")
+);
 
 # Get a list of all guild IDs that are currently claiming an objective
 say "Getting all guilds that currently control WvW objectives...";
@@ -118,12 +113,12 @@ foreach my $guild_id (@known_guilds) {
 
   say OMAIN $current_details;
 
-#  print OHTML $q->Tr(
-#    $q->td($guild_id),
-#    $q->td($guild_name),
-#    $q->td($guild_tag),
-#    $q->td( $emblem_fg eq "" ? "No emblem" : $q->img({src=>"guild emblems/$guild_id.png"}) )
-#  );
+  print OHTML $q->Tr(
+    $q->td($guild_id),
+    $q->td($guild_name),
+    $q->td($guild_tag),
+    $q->td( $emblem_fg eq "" ? "No emblem" : $q->img({src=>"guild emblems/$guild_id.png"}) )
+  );
 
   say "$i" if ++$i % 25 == 0;
 }
@@ -133,12 +128,13 @@ my $new_guilds = $i - scalar(@prior_ids);
 say "$new_guilds new guilds, $i total guilds";
 
 close (OMAIN);
+close (OHTML);
 
-#unlink "guild_details.csv.bak" || die "unable to delete file: $!\n";
-#
-#rename "guild_details.csv", "guild_details.csv.bak" || die "unable to rename file: $!\n";
-#
-#rename "guild_details_new.csv", "guild_details.csv" || die "unable to rename file: $!\n";
+unlink "guild_details.csv.bak" || die "unable to delete file: $!\n";
+
+rename "guild_details.csv", "guild_details.csv.bak" || die "unable to rename file: $!\n";
+
+rename "guild_details_new.csv", "guild_details.csv" || die "unable to rename file: $!\n";
 
 exit;
 
