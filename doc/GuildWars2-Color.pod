@@ -37,17 +37,17 @@ color, on each of three materials: cloth, leather, and metal.
 
 At a high level, the transformation involves the following steps:
 
-=item* Each color has a base RGB color that serves as the starting point for the
+=item * Each color has a base RGB color that serves as the starting point for the
 transformation. (When applying the color to a game texture, e.g. when generating
 a guild emblem, the RGB color of the individual pixels is used as the base
 color.)
 
-=item* Brightness and contrast shifts are applied in the RGB colorspace.
+=item * Brightness and contrast shifts are applied in the RGB colorspace.
 
-=item* The color is converted to the HSL colorspace in order to apply hue,
+=item * The color is converted to the HSL colorspace in order to apply hue,
 saturation, and lightness shifts.
 
-=item* The final color is converted back to RGB.
+=item * The final color is converted back to RGB.
 
 
 =head1 Functions
