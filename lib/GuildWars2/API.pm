@@ -354,7 +354,7 @@ sub recipes {
 }
 
 
-sub recipe_details {
+sub get_recipe {
   my ($self, $recipe_id) = @_;
 
   # Sanity checks on recipe_id
@@ -366,11 +366,13 @@ sub recipe_details {
 
   my $json = $self->_api_request($_url_recipe_details, { recipe_id => $recipe_id } );
 
-  return %$json;
+  my $recipe = GuildWars2::API::Objects::Recipe->new( $json );
+
+  return $recipe;
 }
 
 
-sub colors {
+sub get_colors {
   my ($self, $lang) = @_;
 
   if (defined $lang) {
@@ -970,8 +972,8 @@ hash has the following structure:
      ],
  )
 
-=item $api->colors
-=item $api->colors( $lang )
+=item $api->get_colors
+=item $api->get_colors( $lang )
 
 Returns a hash, keyed on color_id, containing color information for all colors
 in the game. Each hash element is a GuildWars2::API::Objects::Color object.

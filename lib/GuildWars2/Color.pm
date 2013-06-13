@@ -1,7 +1,6 @@
 use Modern::Perl '2012';
 
 package GuildWars2::Color;
-
 BEGIN
 {
   require Exporter;

@@ -33,7 +33,7 @@ if (-e "guild_details.csv") {
   close (IMAIN);
 }
 
-my %colors = $api->colors;
+my %colors = $api->get_colors;
 
 open(OMAIN, ">guild_details_new.csv") or die "unable to open file: $!\n";
 

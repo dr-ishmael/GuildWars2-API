@@ -104,7 +104,7 @@ The internal ID numbers of the colors used in the guild emblem.
 
 =over
 
-=item generate( $colors, $emblem_texture_folder )
+=item $emblem->generate( $colors, $emblem_texture_folder )
 
 Generates the guild emblem and returns it as an L<Image::Magick> object, which
 can then be writte in the image format of your choice.
@@ -153,8 +153,6 @@ sub generate {
   # Only allow image generation if Image::Magick is available
   my $generate_ok = eval {require Image::Magick} ? 1 : 0;
   Carp::croak("ImageMagick is not installed, you can't generate guild emblems!") if !$generate_ok;
-
-  use GuildWars2::Color qw/ colorShiftMatrix compositeColorShiftRgb /;
 
   # Sanity checks on emblem texture folder
   Carp::croak("You must provide a source_folder in order to generate guild emblems.")
@@ -211,9 +209,9 @@ sub generate {
   $image->[3]->Composite(image=>$image->[4], mask=>$image->[5]);
 
   # Perform color transforms
-  _transform_image($image, 0, 2, colorShiftMatrix($colors->{$fg_color_id1}->{cloth}));
-  _transform_image($image, 3, 5, colorShiftMatrix($colors->{$fg_color_id2}->{cloth}));
-  _transform_image($image, 6, 6, colorShiftMatrix($colors->{$bg_color_id}->{cloth}));
+  _transform_image($image, 0, 2, $colors->{$fg_color_id1}->cloth);
+  _transform_image($image, 3, 5, $colors->{$fg_color_id2}->cloth);
+  _transform_image($image, 6, 6, $colors->{$bg_color_id}->cloth);
 
   # Composite foreground primary onto secondary
   $image->[0]->Composite(image=>$image->[3]);
@@ -236,7 +234,7 @@ sub generate {
 }
 
 sub _transform_image {
-  my ($image, $base, $alpha, @matrix) = @_;
+  my ($image, $base, $alpha, $material) = @_;
   foreach my $x ( 0 .. 256 ) {
     foreach my $y ( 0 .. 256 ) {
       my ($alpha) = $image->[$alpha]->getPixel(x=>$x, y=>$y);
@@ -246,7 +244,7 @@ sub _transform_image {
 
         @rgb = map { $_ * 255} @rgb;
 
-        my @rgb2 = compositeColorShiftRgb(\@rgb,\@matrix);
+        my @rgb2 = $material->apply_transform(@rgb)->as_array();
 
         @rgb2 = map { $_ / 255} @rgb2;
 
