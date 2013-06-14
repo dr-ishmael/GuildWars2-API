@@ -64,7 +64,7 @@ Booleans that indicate which crafting disciplines can craft the recipe.
 
 =item disciplines
 
-Returns all 8 discipline booleans as an array, in English alphabetical order.
+Returns all 8 discipline booleans as a hash, keyed on discipline name.
 
 =item recipe_type
 
@@ -164,6 +164,8 @@ use constant LTHR_IDX => 5;
 use constant TALR_IDX => 6;
 use constant WEPN_IDX => 7;
 
+my %_default_disciplines = map { $_ => 0 } qw( armorsmith artificer chef huntsman jeweler leatherworker tailor weaponsmith );
+
 enum 'RecipeType', [qw(
     Amulet Axe Bag Boots Bulk Coat Component Consumable Dagger Dessert Dye
     Earring Feast Focus Gloves Greatsword Hammer Harpoon Helm IngredientCooking
@@ -178,7 +180,7 @@ has 'output_item_id'      => ( is => 'ro', isa => 'Int',            required => 
 has 'output_item_count'   => ( is => 'ro', isa => 'Int',            required => 1 );
 has 'min_rating'          => ( is => 'ro', isa => 'Int',            required => 1 );
 has 'time_to_craft_ms'    => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'disciplines'         => ( is => 'ro', isa => 'ArrayRef[Bool]', required => 1 );
+has 'disciplines'         => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
 has '_unlock_method'      => ( is => 'ro', isa => 'Int',            required => 1 );
 has 'ingredients'         => ( is => 'ro', isa => 'HashRef[Int]',   required => 1 );
 
@@ -186,14 +188,10 @@ around 'BUILDARGS', sub {
   my ($orig, $class, $args) = @_;
 
   if(my $disciplines = delete $args->{disciplines}) {
-    $args->{disciplines}->[ARMR_IDX] = "Armorsmith"    ~~ @$disciplines ? 1 : 0;
-    $args->{disciplines}->[ARTF_IDX] = "Artificer"     ~~ @$disciplines ? 1 : 0;
-    $args->{disciplines}->[CHEF_IDX] = "Chef"          ~~ @$disciplines ? 1 : 0;
-    $args->{disciplines}->[HUNT_IDX] = "Huntsman"      ~~ @$disciplines ? 1 : 0;
-    $args->{disciplines}->[JEWL_IDX] = "Jeweler"       ~~ @$disciplines ? 1 : 0;
-    $args->{disciplines}->[LTHR_IDX] = "Leatherworker" ~~ @$disciplines ? 1 : 0;
-    $args->{disciplines}->[TALR_IDX] = "Tailor"        ~~ @$disciplines ? 1 : 0;
-    $args->{disciplines}->[WEPN_IDX] = "Weaponsmith"   ~~ @$disciplines ? 1 : 0;
+    $args->{disciplines} = \%_default_disciplines;
+    foreach my $d (@$disciplines) {
+      $args->{disciplines}->{lc($d)} = 1;
+    }
   }
 
   if(my $flags = delete $args->{flags}) {
@@ -225,13 +223,13 @@ sub unlock_method {
   }
 }
 
-sub armorsmith    { return $_[0]->{disciplines}->[ARMR_IDX]; }
-sub artificer     { return $_[0]->{disciplines}->[ARTF_IDX]; }
-sub chef          { return $_[0]->{disciplines}->[CHEF_IDX]; }
-sub huntsman      { return $_[0]->{disciplines}->[HUNT_IDX]; }
-sub jeweler       { return $_[0]->{disciplines}->[JEWL_IDX]; }
-sub leatherworker { return $_[0]->{disciplines}->[LTHR_IDX]; }
-sub tailor        { return $_[0]->{disciplines}->[TALR_IDX]; }
-sub weaponsmith   { return $_[0]->{disciplines}->[WEPN_IDX]; }
+sub armorsmith    { return $_[0]->{disciplines}->{armorsmith}; }
+sub artificer     { return $_[0]->{disciplines}->{artificer}; }
+sub chef          { return $_[0]->{disciplines}->{chef}; }
+sub huntsman      { return $_[0]->{disciplines}->{huntsman}; }
+sub jeweler       { return $_[0]->{disciplines}->{jeweler}; }
+sub leatherworker { return $_[0]->{disciplines}->{leatherworker}; }
+sub tailor        { return $_[0]->{disciplines}->{tailor}; }
+sub weaponsmith   { return $_[0]->{disciplines}->{weaponsmith}; }
 
 1;

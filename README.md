@@ -5,21 +5,22 @@ GuildWars2::API is a class module that provides a set of standard interfaces to
 the [Guild Wars 2 API](https://forum-en.guildwars2.com/forum/community/api/API-
 Documentation/).
 
-Additional modules
-------------------
-
-GuildWars2::Color provides functions for working with and applying ArenaNet's
-color transformations.
-
 GuildWars2::GameLink provides functions for encoding and decoding game links
 (aka chat links).
 
 Usage
 -----
 
+    use GuildWars2::API;
+    my $api = GuildWars2::API->new();
+
 Refer to the following POD files for full documentation:
 * [GuildWars2-API.pod](doc/GuildWars2-API.pod)
-* [GuildWars2-Color.pod](doc/GuildWars2-Color.pod)
+    * [GuildWars2-API-Objects.pod](doc/GuildWars2-API-Objects.pod)
+        * [GuildWars2-API-Objects-Color.pod](doc/GuildWars2-API-Objects-Color.pod)
+        * [GuildWars2-API-Objects-Guild.pod](doc/GuildWars2-API-Objects-Guild.pod)
+        * [GuildWars2-API-Objects-Item.pod](doc/GuildWars2-API-Objects-Item.pod)
+        * [GuildWars2-API-Objects-Recipe.pod](doc/GuildWars2-API-Objects-Recipe.pod)
 * [GuildWars2-GameLink.pod](doc/GuildWars2-GameLink.pod)
 
 Prerequisites

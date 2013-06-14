@@ -424,9 +424,9 @@ GuildWars2::API - An interface library for the Guild Wars 2 API
 
 =head1 SYNOPSIS
 
- require GuildWars2::API;
+ use GuildWars2::API;
 
- $api = GuildWars2::API->new;
+ $api = GuildWars2::API->new();
 
  # Check the current state of an event on all worlds
 
@@ -668,208 +668,9 @@ optional language parameter can be passed to override the default language. The
 hash has the following structure (elements marked with *** are enumerated below
 the main structure):
 
- (
-   item_id      => [INT],           # Item ID
-   name         => [STRING],        # Item name
-   description  => [STRING],        # Item description
-   type         => [STRING],        # Item type***
-   level        => [INT],           # Required level
-   rarity       => [STRING],        # Rarity***
-   vendor_value => [INT],           # Value when sold to a merchant
-   game_types   => @([STRING],...), # Game types where item can be used***
-   flags        => @([STRING],...), # Behavioral flags***
-   restrictions => @([STRING],...), # Racial restrictions***
-
-   # One of the following data elements corresponding to the value of "type" above.
-   # Note that some item types do not have a corresponding data element.
-
-   armor =>
-     {
-       type           => [STRING],  # Armor type***
-       weight_class   => [STRING],  # Armor weight class (Light, Medium, Heavy, Clothing)
-       defense        => [INT],     # Defense value
-       infusion_slots => @( ),      # Infusion slots***
-       infix_upgrade  => %( ),      # Infix upgrade***
-       suffix_item_id => [INT],     # Item ID of attached upgrade component
-     }
-
-   back =>
-     {
-       infusion_slots => @( ),      # Infusion slots***
-       infix_upgrade  => %( ),      # Infix upgrade***
-       suffix_item_id => [INT],     # Item ID of attached upgrade component
-     }
-
-   bag =>
-     {
-       no_sell_or_sort => [BOOL],   # Items in bag are not sorted or shown to merchants
-       size            => [INT],    # Number of slots
-     }
-
-   consumable =>
-     {
-       type         => [STRING],    # Consumable type***
-       duration_ms  => [INT],       # Duration of nourishment effect
-       description  => [STRING],    # Description of nourishment effect
-                                    # (Nourishment effects are only on Food and Utility consumables)
-       unlock_type  => [STRING],    # Unlock subtype (BagSlot, BankTab, CraftingRecipe, Dye)
-       color_id     => [INT],       # Color_id unlocked by a Dye (cf. $api->colors)
-       recipe_id    => [INT],       # Recipe_id unlocked by a CraftingRecipe (cf. $api->recipe_details)
-     }
-
-   container =>
-     {
-       type => [STRING],            # Container type (Default, GiftBox)
-     }
-
-   gathering =>
-     {
-       type => [STRING],            # Gathering type (Foraging, Logging, Mining)
-     }
-
-   gizmo =>
-     {
-       type => [STRING],            # Gizmo type (Default, RentableContractNpc, UnlimitedConsumable)
-     }
-
-   tool =>
-     {
-       type => [STRING],            # Tool type (Salvage)
-     }
-
-   trinket =>
-     {
-       type => [STRING],            # Trinket type (Accessory, Amulet, Ring)
-       infusion_slots => @( ),      # Infusion slots***
-       infix_upgrade  => %( ),      # Infix upgrade***
-       suffix_item_id => [INT],     # Item ID of attached upgrade component
-     }
-
-   upgrade_component =>
-     {
-       type           => [STRING],        # Upgrade type (Default, Gem, Rune, Sigil)
-       flags          => @([STRING],...), # Upgrade flags***
-       infusion_upgrade_flags => @([STRING],...), # Infusion flags (Defense, Offense, Utility)
-       bonuses        => @([STRING],...), # Rune bonuses
-       infix_upgrade  => %( ),            # Infix upgrade***
-       suffix         => [STRING],        # Suffix bestowed by the upgrade
-     }
-
-   weapon =>
-     {
-       type        => [STRING],     # Weapon type***
-       damage_type => [STRING],     # Damage type (Physical, Fire, Ice, Lightning)
-       min_power   => [INT],        # Minimum weapon strength value
-       max_power   => [INT],        # Maximum weapon strength value
-       defense     => [INT],        # Defense value
-       infusion_slots => @( ),      # Infusion slots***
-       infix_upgrade  => %( ),      # Infix upgrade***
-       suffix_item_id => [INT],     # Item ID of attached upgrade component
-     }
- )
-
-The following elements are shared between different type data elements:
-
- infusion_slots =>
-   [
-     {
-       flags  => @([STRING]...),  # Flags on the infusion slot (Defense, Offense, Utility)
-     },
-     ...                          # repeat for multiple infusion slots (no item has >1 currently)
-   ]
-
- infix_upgrade =>
-   {
-     buff       =>
-       {
-         skill_id     => [INT],     # Skill ID of the infixed buff skill
-         description  => [STRING],  # Description of the infixed buff skill
-       },
-     attributes =>
-       [
-         {
-           attribute  => [STRING],  # Attribute name
-                                    #   (ConditionDamage, CritDamage, Healing,
-                                    #    Power, Precision, Toughness, Vitality)
-           modifier   => [INT],     # Value of attribute bonus
-         },
-         ...                        # Repeat for each attribute
-       ]
-   }
-
 Enumerations:
 
 =over
-
-=item Item type
-
- Armor
- Back
- Bag
- Consumable
- Container
- CraftingMaterial
- Gathering
- Gizmo
- MiniPet
- Tool
- Trinket
- Trophy
- UpgradeComponent
- Weapon
-
-=item Rarity
-
- Junk
- Basic
- Fine
- Masterwork
- Rare
- Exotic
- Ascended
- Legendary
-
-=item Game types
-
- Activity
- Dungeon
- Pve
- Pvp
- PvpLobby
- Wvw
-
-=item Flags
-
- AccountBound
- HideSuffix
- NoMysticForge
- NoSalvage
- NoSell
- NotUpgradeable
- NoUnderwater
- SoulBindOnAcquire
- SoulBindOnUse
- Unique
-
-=item Restrictions
-
- Asura
- Charr
- Human
- Norn
- Sylvari
-
-*NOTE: There is a single item with restrictions of ('Guardian', 'Warrior'); this is probably a mistake in the API build.
-
-=item Armor type
-
- Boots
- Coat
- Gloves
- Helm
- HelmAquatic
- Leggings
- Shoulders
 
 =item Consumable type
 
@@ -949,7 +750,6 @@ Returns an array containing all "discovered" recipe IDs.
 
 Retrieves data for the given recipe_id (in the given language or the current
 default) and returns a GuildWars2::API::Objects::Recipe object.
-
 
 =item $api->get_colors
 =item $api->get_colors( $lang )

@@ -51,7 +51,7 @@ foreach $recipe_id ($api->list_recipes()) {
   my $ingredients       = $recipe->ingredients;
 
   say OMAIN "$recipe_id|$recipe_type|$output_item_id|$output_item_count|$min_rating|$time_to_craft_ms|$unlock_method"
-            . "|" . join('|', @$disciplines)
+            . "|" . join('|', map { $disciplines->{$_} } sort keys %$disciplines)
             ;
 
   foreach my $item_id (keys %$ingredients) {
