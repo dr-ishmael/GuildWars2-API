@@ -306,11 +306,11 @@ The red, green, and blue component values of the color.
 
 =over
 
-=item as_array
+=item as_array()
 
 Returns the red, green, and blue component values in an array.
 
-=item as_hex
+=item as_hex()
 
 Returns the RGB value as a hex string.
 
@@ -337,6 +337,5 @@ sub as_hex {
   my ($r, $g, $b) = map { sprintf "%02X", int($_) } ($self->red, $self->green, $self->blue);
   return $r.$g.$b;
 }
-
 
 1;

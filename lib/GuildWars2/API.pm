@@ -345,7 +345,7 @@ sub item_details {
 }
 
 
-sub recipes {
+sub list_recipes {
   my ($self) = @_;
 
   my $json = $self->_api_request($_url_recipes);
@@ -851,7 +851,7 @@ Enumerations:
  SoulBindOnUse
  Unique
 
-=item  Restrictions
+=item Restrictions
 
  Asura
  Charr
@@ -940,37 +940,16 @@ Enumerations:
 
 =back
 
-=item $api->recipes
+=item $api->list_recipes
 
 Returns an array containing all "discovered" recipe IDs.
 
-=item $api->recipe_details( $recipe_id )
-=item $api->recipe_details( $recipe_id, $lang )
+=item $api->get_recipe( $recipe_id )
+=item $api->get_recipe( $recipe_id, $lang )
 
-Returns a hash containing detailed information for the given recipe ID. An
-optional language parameter can be passed to override the default language. The
-hash has the following structure:
+Retrieves data for the given recipe_id (in the given language or the current
+default) and returns a GuildWars2::API::Objects::Recipe object.
 
- (
-   recipe_id          => [INT],         # Recipe ID
-   type               => [STRING],      # Recipe type***
-   output_item_id     => [INT],         # Item ID of the recipe output
-   output_item_count  => [INT],         # Quantity of item output
-   min_rating         => [INT],         # Required rating in the associated crafting discipline
-   time_to_craft_ms   => [INT],         # Duration of crafting the recipe
-   disciplines        => @([STRING]...) # List of disciplines that can craft the recipe
-                                        # (Armorsmith, Artificer, Chef, Huntsman, Jeweler,
-                                        #  Leatherworker, Tailor, Weaponsmith)
-   flags              => @([STRING]...) # If recipe is not learned through Discovery (AutoLearned, LearnedFromItem)
-   ingredients        =>
-     [
-       {
-         item_id  => [INT],           # Item ID of the ingredient
-         count    => [INT],           # Required quantity of the ingredient
-       },
-       ...                            # Repeat for each ingredient, up to 4
-     ],
- )
 
 =item $api->get_colors
 =item $api->get_colors( $lang )

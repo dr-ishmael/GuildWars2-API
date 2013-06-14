@@ -20,12 +20,14 @@ See the individual modules for documentation of these subclasses
 
 =item * GuildWars2::API::Objects::Color
 =item * GuildWars2::API::Objects::Guild
+=item * GuildWars2::API::Objects::Recipe
 
 
 =cut
 
 use GuildWars2::API::Objects::Color;
 use GuildWars2::API::Objects::Guild;
-
+use GuildWars2::API::Objects::Recipe;
 
 1;
+
