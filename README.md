@@ -33,6 +33,7 @@ GuildWars2::API requires the following modules, available from CPAN:
 * [CHI](http://search.cpan.org/perldoc?CHI)
 * [LWP::UserAgent](http://search.cpan.org/perldoc?LWP%3A%3AUserAgent)
 * [Modern::Perl](http://search.cpan.org/perldoc?Modern%3A%3APerl)
+* [namespace::autoclean](http://search.cpan.org/perldoc?namespace%3A%3Aautoclean)
 
 Optionally, [ImageMagick](http://www.imagemagick.org) and the Image::Magick
 module are required if you wish to generate guild emblem images directly from

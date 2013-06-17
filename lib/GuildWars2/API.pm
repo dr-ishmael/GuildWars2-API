@@ -12,6 +12,7 @@ use List::Util qw/max min/;
 use LWP::UserAgent;
 
 use Moose;
+use Moose::Util qw( with_traits );
 use Moose::Util::TypeConstraints;
 
 ####################
@@ -63,6 +64,7 @@ has 'wvw_cache_age'   => ( is => 'rw', isa => 'Str', default => '5 minutes' );
 has 'json'            => ( is => 'ro', isa => 'JSON::PP', default => sub{ JSON::PP->new } );
 has 'ua'              => ( is => 'ro', isa => 'LWP::UserAgent', default => sub{ LWP::UserAgent->new } );
 has 'cache'           => ( is => 'ro', isa => 'Maybe[CHI::Driver::File]', lazy => 1, builder => '_init_cache' );
+has '_status'         => ( is => 'ro', isa => 'Bool', default => 1, writer => '_set_status', reader => 'is_success' );
 
 
 ####################
@@ -119,26 +121,42 @@ sub _api_request {
 
   if ( !defined $response ) {
 
+    $self->_set_status(0);
+
     # If not in cache, send GET request to API
     $self->ua->timeout($self->{timeout});
 
     for (my $i = 0; $i < $self->{retries}; $i++) {
       $response = $self->ua->get($url);
 
-      if ($response->is_success()) {
-        $response = $response->decoded_content();
-      }
+      last if $response->is_success();
     }
 
     # If no response or error after using up retries, die
-    Carp::croak "Error getting URL [$url]:\n" . $response->status_line() if !defined $response || (ref($response) eq "HTTP::Response" && $response->is_error());
+    if (!defined($response)) {
+      Carp::carp "Error getting URL [$url]:\n" . $response->status_line();
+      return undef;
+    }
 
-    # Set the CHI cache for this $_url for efficient future access
+    $response = $response->decoded_content();
+
+    # Set the CHI cache for this $url for efficient future access
     $cache_age = $self->{cache_age} unless defined $cache_age;
     $self->cache->set($url, $response, $cache_age) unless defined $self->{nocache};
   }
 
-  my $decoded = $self->json->decode ($response) || Carp::croak("could not decode JSON: $!");
+  my $decoded;
+  eval { $decoded = $self->json->decode ($response) };
+  if ($@) {
+    Carp::carp "Error decoding JSON:\n" . $@;
+    return undef;
+  }
+
+  if (defined($decoded->{error})) {
+    Carp::carp "API error at [$url]";
+  } else {
+    $self->_set_status(1);
+  }
 
   return $decoded;
 }
@@ -166,6 +184,8 @@ sub _generic_names {
   }
 
   my $json = $self->_api_request($interface, { lang => $lang } );
+
+  return undef if !$self->is_success();
 
   my $names = {};
 
@@ -314,7 +334,7 @@ sub wvw_match_details {
 }
 
 
-sub items {
+sub list_items {
   my ($self) = @_;
 
   my $json = $self->_api_request($_url_items);
@@ -323,7 +343,7 @@ sub items {
 }
 
 
-sub item_details {
+sub get_item {
   my ($self, $item_id, $lang) = @_;
 
   # Sanity checks on item_id
@@ -341,7 +361,31 @@ sub item_details {
 
   my $json = $self->_api_request($_url_item_details, { lang => $lang, item_id => $item_id } );
 
-  return %$json;
+  my $t = $json->{type};
+
+  # Convert CamelCase type value to lower_case subobject name
+  (my $tx = $t) =~ s/([a-z])([A-Z])/${1}_$2/g;
+  $tx = lc($tx);
+
+  # Standardize name of type-specific subobject
+  if (my $a = delete $json->{$tx}) { $json->{type_data} = $a; }
+
+  my $item;
+  # Instantiate the class with special roles for certain types
+  my @special_types = qw/ armor back bag consumable tool trinket upgrade_component weapon /;
+  if ($tx ~~ @special_types) {
+    $item = with_traits(
+      'GuildWars2::API::Objects::Item',
+      (
+        "GuildWars2::API::Objects::Item::$t",
+      ),
+    )->new( $json );
+  } else {
+    # If it's not a special type, instantiate as a plain item
+    $item = GuildWars2::API::Objects::Item->new($json);
+  }
+
+  return $item;
 }
 
 
@@ -408,6 +452,8 @@ sub get_guild {
   }
 
   my $json = $self->_api_request($_url_guild_details, { $id_or_name => $guild_id });
+
+  return undef if !$self->is_success();
 
   my $guild_obj = GuildWars2::API::Objects::Guild->new( $json );
 
@@ -656,88 +702,15 @@ has the following structure:
      ],
  )
 
-=item $api->items
+=item $api->list_items
 
 Returns an array containing all "discovered" item IDs.
 
-=item $api->item_details( $item_id )
-=item $api->item_details( $item_id, $lang )
+=item $api->get_item( $item_id )
+=item $api->get_item( $item_id, $lang )
 
-Returns a hash containing detailed information for the given item ID. An
-optional language parameter can be passed to override the default language. The
-hash has the following structure (elements marked with *** are enumerated below
-the main structure):
-
-Enumerations:
-
-=over
-
-=item Consumable type
-
- AppearanceChange
- ContractNpc
- Food
- Generic
- Halloween
- Immediate
- Transmutation
- Unlock
- Utility
-
-=item Upgrade component flags
-
- # Armor
- HeavyArmor
- LightArmor
- MediumArmor
-
- # Weapons
- Axe
- LongBow
- ShortBow
- Dagger
- Focus
- Greatsword
- Hammer
- Harpoon
- Mace
- Pistol
- Rifle
- Scepter
- Shield
- Speargun
- Staff
- Sword
- Torch
- Trident
- Warhorn
-
- # Trinkets
- Trinket
-
-=item Weapon type
-
- Axe
- Dagger
- Focus
- Greatsword
- Hammer
- Harpoon
- LongBow
- Mace
- Pistol
- Rifle
- Scepter
- Shield
- ShortBow
- Speargun
- Staff
- Sword
- Torch
- Toy
- Trident
- TwoHandedToy
- Warhorn
+Retrieves data for the given item_id (in the given language or the current
+default) and returns a GuildWars2::API::Objects::Item object.
 
 =back
 

@@ -36,7 +36,7 @@ if ($mode eq ">") {
 
 my $i = 0;
 my $recipe_id;
-foreach $recipe_id ($api->list_recipes()) {
+foreach $recipe_id (sort { $a <=> $b } $api->list_recipes()) {
 
   next if ($recipe_id ~~ @prior_ids);
   my $recipe = $api->get_recipe($recipe_id);
@@ -60,7 +60,7 @@ foreach $recipe_id ($api->list_recipes()) {
     say OINGRD "$recipe_id|$item_id|$count";
   }
 
-  say $i if ($i++ % 1000) == 0;
+  say ($i-1) if ($i++ % 1000) == 0;
 }
 
 say "$i recipes processed.";

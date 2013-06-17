@@ -10,19 +10,21 @@ This subclass of GuildWars2::API::Objects defines the different item objects.
 =cut
 
 ####################
-# Item->Base role
+# Item
 ####################
-package GuildWars2::API::Objects::Item::Base;
-use Moose::Role;
+package GuildWars2::API::Objects::Item;
+use namespace::autoclean;
+use Moose;
 use Moose::Util::TypeConstraints;
 
 =pod
 
-=head1 ROLES
+=head1 Classes
 
-=head2 Item::Base
+=head2 Item
 
-The Item::Base role defines the common features of all item classes.
+The Item class is the base for all types of items. For some types, specialized
+are added to this base class which define additional attributes.
 
 =head3 Attributes
 
@@ -82,7 +84,7 @@ The item's rarity. Possible values:
 
 The amount of coin received for selling the item to a vendor.
 
-=item game_types
+=item game_type_flags
 
 A hash of boolean flags identifying the game types where the item can be
 used. Keys:
@@ -108,7 +110,7 @@ A hash of boolean flags identifying how the item behaves. Keys and descriptions:
  NoSell             Item cannot be sold to vendors.
  NotUpgradeable     Item does not have an upgrade slot.
  NoUnderwater       Item cannot be used in underwater mode.
- SoulBindOnAcquire  Item is soulbound to the character who acquired it, i.e. it
+ SoulbindOnAcquire  Item is soulbound to the character who acquired it, i.e. it
                       can only be equipped by that character (account bound
                       restrictions also apply).
  SoulBindOnUse      Item becomes soulbound when it is equipped.
@@ -121,7 +123,7 @@ A hash of boolean flags identifying how the item behaves. Keys and descriptions:
 
 my %_default_gametypes = map { $_ => 0 } qw( Activity Dungeon Pve Pvp PvpLobby Wvw );
 
-my %_default_flags = map { $_ => 0 } qw( AccountBound HideSuffix NoMysticForge NoSalvage NoSell NotUpgradeable NoUnderwater SoulBindOnAcquire SoulBindOnUse Unique );
+my %_default_flags = map { $_ => 0 } qw( AccountBound HideSuffix NoMysticForge NoSalvage NoSell NotUpgradeable NoUnderwater SoulbindOnAcquire SoulBindOnUse Unique );
 
 enum 'ItemType', [qw(
     Armor Back Bag Consumable Container CraftingMaterial Gathering Gizmo MiniPet
@@ -132,29 +134,32 @@ enum 'ItemRarity', [qw( Junk Basic Fine Masterwork Rare Exotic Ascended Legendar
 
 has 'item_id'         => ( is => 'ro', isa => 'Int',            required => 1 );
 has 'item_name'       => ( is => 'ro', isa => 'Str',            required => 1 );
-has 'description'     => ( is => 'ro', isa => 'Str',            required => 1 );
 has 'item_type'       => ( is => 'ro', isa => 'ItemType',       required => 1 );
+has 'item_subtype'    => ( is => 'ro', isa => 'Str' );
+has 'description'     => ( is => 'ro', isa => 'Str',            required => 1 );
 has 'level'           => ( is => 'ro', isa => 'Int',            required => 1 );
 has 'rarity'          => ( is => 'ro', isa => 'ItemRarity',     required => 1 );
 has 'vendor_value'    => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'game_types'      => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
+has 'game_type_flags' => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
 has 'item_flags'      => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
-
 
 around 'BUILDARGS', sub {
   my ($orig, $class, $args) = @_;
 
   # Renames
-  if(my $a = delete $args->{type}) { $args->{item_type} = $a; } # type --> item_type
-  if(my $a = delete $args->{name}) { $args->{item_name} = $a; } # name --> item_name
+  if(my $a = delete $args->{name}) { $args->{item_name} = $a }
+  if(my $a = delete $args->{type}) { $args->{item_type} = $a }
+  if(my $a = delete $args->{type_data}->{type}) { $args->{item_subtype} = $a }
 
+  # Transform from array[str] to hash[bool]
   if(my $gametypes = delete $args->{game_types}) {
-    $args->{game_types} = \%_default_gametypes;
+    $args->{game_type_flags} = \%_default_gametypes;
     foreach my $g (@$gametypes) {
-      $args->{game_types}->{$g} = 1;
+      $args->{game_type_flags}->{$g} = 1;
     }
   }
 
+  # Transform from array[str] to hash[bool]
   if(my $flags = delete $args->{flags}) {
     $args->{item_flags} = \%_default_flags;
     foreach my $f (@$flags) {
@@ -166,18 +171,19 @@ around 'BUILDARGS', sub {
 };
 
 ####################
-# Item->Equippable role
+# Item->Infixed role
 ####################
-package GuildWars2::API::Objects::Item::Equippable;
+package GuildWars2::API::Objects::Item::Infixed;
+use namespace::autoclean;
 use Moose::Role;
 use Moose::Util::TypeConstraints;
 
 =pod
 
-=head2 Item::Equippable
+=head2 Item::Infixed
 
-The Item::Equippable role defines the common features of equippable item types:
-Armor, Back, Trinket, and Weapon.
+The Item::Infixed role defines the common features of "infixed" item types:
+anything that is Equippable, as well as the UpgradeComponent type.
 
 =head3 Attributes
 
@@ -197,10 +203,55 @@ item is equipped.
 
 The description of the buff effect.
 
-=item infusion_types
+=back
 
-The types of infusion allowed in the item's infusion slot. If blank, then the
-item does not have an infusion slot.
+=cut
+
+has 'item_attributes' => ( is => 'ro', isa => 'HashRef[Int]' );
+has 'buff_skill_id'   => ( is => 'ro', isa => 'Int' );
+has 'buff_desc'       => ( is => 'ro', isa => 'Str' );
+
+around 'BUILDARGS', sub {
+  my ($orig, $class, $args) = @_;
+
+  if(my $infix = delete $args->{type_data}->{infix_upgrade}) {
+    if(my $a = delete $infix->{buff}->{skill_id})    { $args->{buff_skill_id} = $a; }
+    if(my $a = delete $infix->{buff}->{description}) { $args->{buff_desc}     = $a; }
+
+    if(my $attributes = delete $infix->{attributes}) {
+      foreach my $a (@$attributes) {
+        $args->{item_attributes}->{$a->{attribute}} = $a->{modifier};
+      }
+    }
+  }
+
+  $class->$orig($args);
+};
+
+####################
+# Item->Equippable role
+####################
+package GuildWars2::API::Objects::Item::Equippable;
+use namespace::autoclean;
+use Moose::Role;
+use Moose::Util::TypeConstraints;
+
+with 'GuildWars2::API::Objects::Item::Infixed';
+
+=pod
+
+=head2 Item::Equippable
+
+The Item::Equippable role defines the common features of equippable item types:
+Armor, Back, Trinket, and Weapon. It includes the Item::Infixed role.
+
+=head3 Attributes
+
+=over
+
+=item infusion_slot
+
+The type of infusion slot on the item, if it has one.
 
 =item suffix_item_id
 
@@ -210,30 +261,19 @@ The internal ID of the upgrade component attached to the item.
 
 =cut
 
-has 'item_attributes' => ( is => 'ro', isa => 'HashRef[Int]', required => 1 );
-has 'buff_skill_id'   => ( is => 'ro', isa => 'Int' );
-has 'buff_desc'       => ( is => 'ro', isa => 'Str' );
-has 'infusion_types'  => ( is => 'ro', isa => 'Str' );
-has 'suffix_item_id'  => ( is => 'ro', isa => 'Int' );
+has 'infusion_slot'   => ( is => 'ro', isa => 'Str' );
+has 'suffix_item_id'  => ( is => 'ro', isa => 'Str' );
 
 around 'BUILDARGS', sub {
   my ($orig, $class, $args) = @_;
 
-  if(my $i = delete $args->{infusion_slots}) {
-    my $flags = $i->[0]->{flags};  # Cheat on the assumption that no item has more than 1 slot
-    $args->{infusion_types} = join(',', @$flags);
+  $args->{infusion_slot} = "";
+  if(my $i = delete $args->{type_data}->{infusion_slots}) {
+    # Cheat on the assumption that no item has more than 1 slot and no slot has more than 1 type
+    $args->{infusion_slot} = $i->[0]->{flags}->[0] || "";
   }
 
-  if(my $infix = delete $args->{infix_upgrade}) {
-    if(my $a = delete $infix->{buff}->{skill_id})    { $args->{buff_skill_id} = $a; }
-    if(my $a = delete $infix->{buff}->{description}) { $args->{buff_desc}     = $a; }
-
-    if(my $attributes = delete $infix->{attributes}) {
-      foreach my $a (@$attributes) {
-        $args->{attributes}->{$a->{attribute}} = $a->{modifier};
-      }
-    }
-  }
+  if(my $a = delete $args->{type_data}->{suffix_item_id}) { $args->{suffix_item_id} = $a }
 
   $class->$orig($args);
 };
@@ -242,20 +282,20 @@ around 'BUILDARGS', sub {
 # Item->Armor
 ####################
 package GuildWars2::API::Objects::Item::Armor;
-use Moose;
+use namespace::autoclean;
+use Moose::Role;
 use Moose::Util::TypeConstraints;
 
-with 'GuildWars2::API::Objects::Item::Base';
 with 'GuildWars2::API::Objects::Item::Equippable';
 
 =pod
 
-=head1 CLASSES
+=head1 ROLES
 
 =head2 Item::Armor
 
-The Item::Armor object represents an item of type Armor. It uses the roles
-Item::Base and Item::Equippable.
+The Item::Armor role adds attributes specific to armor items. It includes the
+Item::Equippable role.
 
 =head3 Attributes
 
@@ -277,6 +317,7 @@ The item's armor subtype.
 
 The weight class of the armor.
 
+ Clothing
  Heavy
  Light
  Medium
@@ -298,22 +339,17 @@ enum 'ArmorType', [qw( Boots Coat Gloves Helm HelmAquatic Leggings Shoulders )];
 
 has 'armor_type'      => ( is => 'ro', isa => 'ArmorType',      required => 1 );
 has 'armor_class'     => ( is => 'ro', isa => 'Str',            required => 1 );
-has 'defense'         => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'defense'         => ( is => 'ro', isa => 'Int' );
 has 'race'            => ( is => 'ro', isa => 'Str' );
 
 around 'BUILDARGS', sub {
   my ($orig, $class, $args) = @_;
 
-  # Promote values from JSON subobject and some renames
-  if(my $armor = delete $args->{armor}) {
-    if(my $a = delete $armor->{type})           { $args->{armor_type}     = $a; } # type --> armor_type
-    if(my $a = delete $armor->{weight_class})   { $args->{armor_class}    = $a; } # weight_class --> armor_class
-    if(my $a = delete $armor->{defense})        { $args->{defense}        = $a; }
-    if(my $a = delete $armor->{infusion_slots}) { $args->{infusion_slots} = $a; }
-    if(my $a = delete $armor->{infix_upgrade})  { $args->{infix_upgrade}  = $a; }
-    if(my $a = delete $armor->{suffix_item_id}) { $args->{suffix_item_id} = $a; }
-  }
+  if(my $a = delete $args->{type_data}->{type})           { $args->{armor_type}     = $a; } # type --> armor_type
+  if(my $a = delete $args->{type_data}->{weight_class})   { $args->{armor_class}    = $a; } # weight_class --> armor_class
+  if(my $a = delete $args->{type_data}->{defense})        { $args->{defense}        = $a; }
 
+  # The top-level attribute 'restrictions' actually applies only to armor
   if(my $r = delete $args->{restrictions}) {
     # A single item (17012) has restrictions = [Guardian,Warrior]
     # All others have a single racial restriction
@@ -330,100 +366,410 @@ around 'BUILDARGS', sub {
 # Item->Back
 ####################
 package GuildWars2::API::Objects::Item::Back;
-use Moose;
+use namespace::autoclean;
+use Moose::Role;
 
-with 'GuildWars2::API::Objects::Item::Base';
 with 'GuildWars2::API::Objects::Item::Equippable';
 
 =pod
 
 =head2 Item::Back
 
-The Item::Back object represents an item of type Back. It uses the roles
-Item::Base and Item::Equippable.
-
-=head3 Attributes
-
-The Item::Back object does not have any additional attributes.
+The Item::Back role adds attributes specific to back items. It includes the
+Item::Equippable role, but does not add any attributes directly.
 
 =cut
 
-
-
+####################
+# Item->Bag
+####################
+package GuildWars2::API::Objects::Item::Bag;
+use namespace::autoclean;
+use Moose::Role;
 
 =pod
 
-   bag =>
-     {
-       no_sell_or_sort => [BOOL],   # Items in bag are not sorted or shown to merchants
-       size            => [INT],    # Number of slots
-     }
+=head2 Item::Bag
 
-   consumable =>
-     {
-       duration_ms  => [INT],       # Duration of nourishment effect
-       description  => [STRING],    # Description of nourishment effect
-                                    # (Nourishment effects are only on Food and Utility consumables)
-       unlock_type  => [STRING],    # Unlock subtype (BagSlot, BankTab, CraftingRecipe, Dye)
-       color_id     => [INT],       # Color_id unlocked by a Dye (cf. $api->colors)
-       recipe_id    => [INT],       # Recipe_id unlocked by a CraftingRecipe (cf. $api->recipe_details)
-     }
+The Item::Bag role adds attributes specific to bag items.
 
-   trinket =>
-     {
-       infusion_slots => @( ),      # Infusion slots***
-       infix_upgrade  => %( ),      # Infix upgrade***
-       suffix_item_id => [INT],     # Item ID of attached upgrade component
-     }
+=head3 Attributes
 
-   upgrade_component =>
-     {
-       flags          => @([STRING],...), # Upgrade flags***
-       infusion_upgrade_flags => @([STRING],...), # Infusion flags (Defense, Offense, Utility)
-       bonuses        => @([STRING],...), # Rune bonuses
-       infix_upgrade  => %( ),            # Infix upgrade***
-       suffix         => [STRING],        # Suffix bestowed by the upgrade
-     }
+=over
 
-   weapon =>
-     {
-       damage_type => [STRING],     # Damage type (Physical, Fire, Ice, Lightning)
-       min_power   => [INT],        # Minimum weapon strength value
-       max_power   => [INT],        # Maximum weapon strength value
-       defense     => [INT],        # Defense value
-       infusion_slots => @( ),      # Infusion slots***
-       infix_upgrade  => %( ),      # Infix upgrade***
-       suffix_item_id => [INT],     # Item ID of attached upgrade component
-     }
- )
+=item bag_size
 
+The number of slots in the bag.
+
+=item invisible
+
+Boolean indicating whether the bag is "invisible," i.e. items in it do not
+appear in vendor lists or the Trading Post and do not move when inventory is
+sorted.
+
+=back
 
 =cut
 
+has 'bag_size'     => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'invisible'    => ( is => 'ro', isa => 'Bool',            required => 1 );
+
+around 'BUILDARGS', sub {
+  my ($orig, $class, $args) = @_;
+
+  if(my $a = delete $args->{type_data}->{size})            { $args->{bag_size}  = $a; } # size --> bag_size
+
+  $args->{invisible} = delete $args->{type_data}->{no_sell_or_sort} || 0;
+
+  $class->$orig($args);
+};
+
+####################
+# Item->Consumable
+####################
+package GuildWars2::API::Objects::Item::Consumable;
+use namespace::autoclean;
+use Moose::Role;
+use Moose::Util::TypeConstraints;
+
+=pod
+
+=head2 Item::Consumable
+
+The Item::Consumable role adds attributes specific to consumable items.
+
+=head3 Attributes
+
+=over
+
+=item consumable_type
+
+The item's consumable subtype.
+
+ AppearanceChange
+ Booze
+ ContractNpc
+ Food
+ Generic
+ Halloween
+ Immediate
+ Transmutation
+ Unlock
+ Utility
+
+=item food_duration_ms
+
+For Food subtypes, the duration in milliseconds of the food's Nourishment effect.
+
+=item food_description
+
+For Food subtypes, the description of the food's Nourishment effect.
+
+=item unlock_type
+
+For Unlock subtypes, the item's Unlock sub-subtype.
+
+ BagSlot
+ BankTab
+ CraftingRecipe
+ Dye
+
+=item unlock_color_id
+
+For Dye-type unlocks, the internal ID of the color unlocked by the item. This
+can be used to look up the color data in the output of the $api->get_colors
+method.
+
+=item unlock_recipe_id
+
+For CraftingRecipe-type unlocks, the internal ID of the recipe unlocked by the
+item. This can be used to look up the recipe data with $api-
+>get_recipe($recipe_id).
+
+=back
+
+=cut
+
+enum 'ConsType', [qw( AppearanceChange Booze ContractNpc Food Generic Halloween Immediate Transmutation Unlock Utility )];
+enum 'UnlockType', [qw( BagSlot BankTab CraftingRecipe Dye )];
+
+has 'consumable_type'     => ( is => 'ro', isa => 'ConsType',   required => 1 );
+has 'food_duration_ms'    => ( is => 'ro', isa => 'Str' );
+has 'food_description'    => ( is => 'ro', isa => 'Str' );
+has 'unlock_type'         => ( is => 'ro', isa => 'UnlockType' );
+has 'unlock_color_id'     => ( is => 'ro', isa => 'Str' );
+has 'unlock_recipe_id'    => ( is => 'ro', isa => 'Str' );
+
+around 'BUILDARGS', sub {
+  my ($orig, $class, $args) = @_;
+
+  if(my $a = delete $args->{type_data}->{type})         { $args->{consumable_type} = $a; } # type --> consumable_type
+  if(my $a = delete $args->{type_data}->{duration_ms})  { $args->{food_duration_ms} = $a; } # duration_ms --> food_duration_ms
+  if(my $a = delete $args->{type_data}->{description})  { $args->{food_description} = $a; } # description --> food_description
+  if(my $a = delete $args->{type_data}->{unlock_type})  { $args->{unlock_type} = $a; }
+  if(my $a = delete $args->{type_data}->{color_id})     { $args->{unlock_color_id} = $a; }
+  if(my $a = delete $args->{type_data}->{recipe_id})    { $args->{unlock_recipe_id} = $a; }
+
+  $class->$orig($args);
+};
+
+####################
+# Item->Tool
+####################
+package GuildWars2::API::Objects::Item::Tool;
+use namespace::autoclean;
+use Moose::Role;
+use Moose::Util::TypeConstraints;
+
+=pod
+
+=head2 Item::Tool
+
+The Item::Tool role adds attributes specific to tool items.
+
+=head3 Attributes
+
+=over
+
+=item tool_type
+
+The item's tool subtype.
+
+ Salvage
+
+=back
+
+=cut
+
+enum 'ToolType', [qw( Salvage xxDUMMYxx )]; # enum requires 2 values
+
+has 'tool_type'  => ( is => 'ro', isa => 'ToolType',   required => 1 );
+has 'charges'    => ( is => 'ro', isa => 'Int',        required => 1 );
+
+around 'BUILDARGS', sub {
+  my ($orig, $class, $args) = @_;
+
+  if(my $a = delete $args->{type_data}->{type})     { $args->{tool_type} = $a; } # type --> tool_type
+  if(my $a = delete $args->{type_data}->{charges})  { $args->{charges} = $a; }
+
+  $class->$orig($args);
+};
+
+
+####################
+# Item->Trinket
+####################
+package GuildWars2::API::Objects::Item::Trinket;
+use namespace::autoclean;
+use Moose::Role;
+use Moose::Util::TypeConstraints;
+
+with 'GuildWars2::API::Objects::Item::Equippable';
+
+=pod
+
+=head2 Item::Trinket
+
+The Item::Trinket role adds attributes specific to trinket items. It includes
+the Item::Equippable role.
+
+=head3 Attributes
+
+=over
+
+=item trinket_type
+
+The item's trinket subtype.
+
+ Accessory
+ Amulet
+ Ring
+
+=back
+
+=cut
+
+enum 'TrinketType', [qw( Accessory Amulet Ring )];
+
+has 'trinket_type'    => ( is => 'ro', isa => 'TrinketType',   required => 1 );
+
+around 'BUILDARGS', sub {
+  my ($orig, $class, $args) = @_;
+
+  if(my $a = delete $args->{type_data}->{type}) { $args->{trinket_type} = $a; } # type --> trinket_type
+
+  $class->$orig($args);
+};
+
+####################
+# Item->UpgradeComponent
+####################
+package GuildWars2::API::Objects::Item::UpgradeComponent;
+use namespace::autoclean;
+use Moose::Role;
+use Moose::Util::TypeConstraints;
+
+with 'GuildWars2::API::Objects::Item::Infixed';
+
+=pod
+
+=head2 Item::UpgradeComponent
+
+The Item::UpgradeComponent role adds attributes specific to upgrade
+components. It includes the Item::Infixed role.
+
+=head3 Attributes
+
+=over
+
+=item upgrade_type
+
+The item's updgrade component subtype.
+
+=item suffix
+
+The suffix that the upgrade confers when it is attached to an item.
+
+=item infusion_type
+
+The upgrade's infusion type.
+
+=item rune_bonuses
+
+For upgrade_type = Rune, the list of bonuses the rune confers, given as an
+array.
+
+=item applies_to
+
+The type of equipment the upgrade can be applied to.
+
+ All
+ Armor
+ Trinket
+ Weapon
+
+=back
+
+=cut
+
+enum 'UpgradeType', [qw( Default Gem Rune Sigil )];
+
+enum 'InfusionType', [qw( Defense Offense Omni Utility )];
+
+has 'upgrade_type'    => ( is => 'ro', isa => 'UpgradeType',    required => 1 );
+has 'applies_to'      => ( is => 'ro', isa => 'Str',            required => 1 );
+has 'suffix'          => ( is => 'ro', isa => 'Str', default => "" );
+has 'infusion_type'   => ( is => 'ro', isa => 'Maybe[InfusionType]' );
+has 'rune_bonuses'    => ( is => 'ro', isa => 'ArrayRef[Str]' );
+
+around 'BUILDARGS', sub {
+  my ($orig, $class, $args) = @_;
+
+  if(my $a = delete $args->{type_data}->{type})         { $args->{upgrade_type} = $a; }
+  if(my $a = delete $args->{type_data}->{suffix})       { $args->{suffix} = $a; }
+  if(my $a = delete $args->{type_data}->{bonuses})      { $args->{rune_bonuses} = $a; }
+
+  if(my $flags = delete $args->{type_data}->{flags}) {
+    # Making assumptions about the only valid flag combinations
+    for (scalar @$flags) {
+      $args->{applies_to} = 'Trinket' when 1;
+      $args->{applies_to} = 'Armor'   when 3;
+      $args->{applies_to} = 'Weapon'  when 19;
+      $args->{applies_to} = 'All'     when 23;
+    }
+  }
+
+  if(my $iuf = delete $args->{type_data}->{infusion_upgrade_flags}) {
+    $args->{infusion_type} = (@$iuf == 3) ? 'Omni' : $iuf->[0];
+  }
+
+  $class->$orig($args);
+};
+
+####################
+# Item->Weapon
+####################
+package GuildWars2::API::Objects::Item::Weapon;
+use namespace::autoclean;
+use Moose::Role;
+use Moose::Util::TypeConstraints;
+
+with 'GuildWars2::API::Objects::Item::Equippable';
+
+=pod
+
+=head2 Item::Weapon
+
+The Item::Weapon role adds attributes specific to weapon items. It includes
+the Item::Equippable role.
+
+=head3 Attributes
+
+=over
+
+=item weapon_type
+
+The item's weapon subtype.
+
+ Axe
+ Dagger
+ Focus
+ Greatsword
+ Hammer
+ Harpoon
+ LongBow
+ Mace
+ Pistol
+ Rifle
+ Scepter
+ Shield
+ ShortBow
+ Speargun
+ Staff
+ Sword
+ Torch
+ Toy
+ Trident
+ TwoHandedToy
+ Warhorn
+
+=item damage_type
+
+The weapon's (cosmetic) damage type.
+
+=item min_strength
+=item max_strength
+
+The weapon's minimum and maximum strength ratings.
+
+=item defense
+
+The weapon's defense value. Only for weapon_type = 'shield'.
+
+=back
+
+=cut
+
+enum 'WeaponType', [qw( Axe Dagger Focus Greatsword Hammer Harpoon LongBow Mace Pistol Rifle Scepter
+                        Shield ShortBow Speargun Staff Sword Torch Toy Trident TwoHandedToy Warhorn )];
+
+has 'weapon_type'     => ( is => 'ro', isa => 'WeaponType',   required => 1 );
+has 'damage_type'     => ( is => 'ro', isa => 'Str',          required => 1 );
+has 'min_strength'    => ( is => 'ro', isa => 'Int' );
+has 'max_strength'    => ( is => 'ro', isa => 'Int' );
+has 'defense'         => ( is => 'ro', isa => 'Int' );
+
+around 'BUILDARGS', sub {
+  my ($orig, $class, $args) = @_;
+
+  if(my $a = delete $args->{type_data}->{type})         { $args->{weapon_type}  = $a; } # type --> weapon_type
+  if(my $a = delete $args->{type_data}->{min_power})    { $args->{min_strength} = $a; } # min_power --> min_strength
+  if(my $a = delete $args->{type_data}->{max_power})    { $args->{max_strength} = $a; } # max_power --> max_strength
+  if(my $a = delete $args->{type_data}->{damage_type})  { $args->{damage_type} = $a; }
+  if(my $a = delete $args->{type_data}->{defense})      { $args->{defense} = $a; }
+
+  $class->$orig($args);
+};
+
+
 1;
-
-__END__
-
-{
-enum 'ItemSubType', [qw(
-    Default
-# consumable
-    AppearanceChange ContractNpc Food Generic Halloween Immediate Transmutation Unlock Utility
-# container
-    GiftBox
-# gathering
-    Foraging Logging Mining
-# gizmo
-    RentableContractNpc UnlimitedConsumable
-# tool
-    Salvage
-# trinket
-    Accessory Amulet Ring
-# upgrade_component
-    Gem Rune Sigil
-# weapon
-    Axe Dagger Focus Greatsword Hammer Harpoon LongBow Mace Pistol Rifle Scepter
-    Shield ShortBow Speargun Staff Sword Torch Toy Trident TwoHandedToy Warhorn
-  )];
-}
-

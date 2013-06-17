@@ -73,6 +73,17 @@ say "Parsing all guild details...";
 foreach my $guild_id (@known_guilds) {
   my $guild = $api->get_guild($guild_id);
 
+  if (!$api->is_success()) {
+    if (defined($guild->{error})) {
+      # Probably guild has been disbanded, API doesn't return any error text though
+      say "Guild ID $guild_id no longer exists, deleting from guild details file.";
+    } else {
+      say "API error on guild id $guild_id.";
+    }
+    say "Old guild data was: " . $prior_hash{$guild_id};
+    next;
+  }
+
   my $guild_name    = $guild->guild_name;
   my $guild_tag     = $guild->tag;
 

@@ -155,15 +155,6 @@ use constant DISC_IDX => 0;
 use constant AUTO_IDX => 1;
 use constant ITEM_IDX => 2;
 
-use constant ARMR_IDX => 0;
-use constant ARTF_IDX => 1;
-use constant CHEF_IDX => 2;
-use constant HUNT_IDX => 3;
-use constant JEWL_IDX => 4;
-use constant LTHR_IDX => 5;
-use constant TALR_IDX => 6;
-use constant WEPN_IDX => 7;
-
 my %_default_disciplines = map { $_ => 0 } qw( armorsmith artificer chef huntsman jeweler leatherworker tailor weaponsmith );
 
 enum 'RecipeType', [qw(
