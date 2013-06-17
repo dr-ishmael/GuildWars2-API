@@ -51,7 +51,7 @@ sub encode_gl {
       $type = 2;
       $id = $a->{item_id};
     } elsif (defined($a->{recipe_id})) {
-      $type = 9;
+      $type = 10;
       $id = $a->{recipe_id};
     } else {
       Carp::croak("Unrecognized structure (not item or recipe) passed to encode_game_link()");
@@ -65,10 +65,10 @@ sub encode_gl {
       $type = 3 when 'text';
       $type = 4 when 'map';
       # $type = 5 when ???;
-      $type = 6 when 'skill';
-      # $type = 7 when 'player';
+      $type = 7 when 'skill';
       $type = 8 when 'trait';
-      $type = 9 when 'recipe';
+      # $type = 9 when 'player';
+      $type = 10 when 'recipe';
       $type = $a when /[1234689]/;
       default { Carp::croak("Unrecognized type [$a] passed to encode_game_link()") }
     }
@@ -142,15 +142,14 @@ supported.
        2   item
        3   text
        4   map
-       6   skill
+       7   skill
        8   trait
-       9   recipe
+      10   recipe
 
 =item decode( $game_link )
 
 Decodes a game link and returns an array containing the type and ID. If the type
 is 2 (item), a third element is returned containing the item's quantity.
-
 
 =back
 
