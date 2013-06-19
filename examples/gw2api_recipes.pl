@@ -29,7 +29,7 @@ open(OMAIN, $mode, "recipes.csv") or die "unable to open file: $!\n";
 open(OINGRD, $mode, "recipe_ingredients.csv") or die "unable to open file: $!\n";
 
 if ($mode eq ">") {
-  say OMAIN "recipe_id|type|output_item_id|output_item_count|min_rating|time_to_craft_ms|unlock_method|armorsmith|artificer|chef|huntsman|jeweler|leatherworker|tailor|weaponsmith";
+  say OMAIN "recipe_id|game_link|type|output_item_id|output_item_count|min_rating|time_to_craft_ms|unlock_method|armorsmith|artificer|chef|huntsman|jeweler|leatherworker|tailor|weaponsmith";
 
   say OINGRD "recipe_id|item_id|count";
 }
@@ -41,6 +41,7 @@ foreach $recipe_id (sort { $a <=> $b } $api->list_recipes()) {
   next if ($recipe_id ~~ @prior_ids);
   my $recipe = $api->get_recipe($recipe_id);
 
+  my $game_link         = $recipe->game_link;
   my $recipe_type       = $recipe->recipe_type;
   my $output_item_id    = $recipe->output_item_id;
   my $output_item_count = $recipe->output_item_count;
@@ -50,7 +51,7 @@ foreach $recipe_id (sort { $a <=> $b } $api->list_recipes()) {
   my $unlock_method     = $recipe->unlock_method;
   my $ingredients       = $recipe->ingredients;
 
-  say OMAIN "$recipe_id|$recipe_type|$output_item_id|$output_item_count|$min_rating|$time_to_craft_ms|$unlock_method"
+  say OMAIN "$recipe_id|$game_link|$recipe_type|$output_item_id|$output_item_count|$min_rating|$time_to_craft_ms|$unlock_method"
             . "|" . join('|', map { $disciplines->{$_} } sort keys %$disciplines)
             ;
 

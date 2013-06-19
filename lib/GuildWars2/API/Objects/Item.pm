@@ -17,14 +17,21 @@ use namespace::autoclean;
 use Moose;
 use Moose::Util::TypeConstraints;
 
+use GuildWars2::API::Constants;
+
+with 'GuildWars2::API::Objects::Linkable';
+
 =pod
 
 =head1 Classes
 
 =head2 Item
 
-The Item class is the base for all types of items. For some types, specialized
-are added to this base class which define additional attributes.
+The Item class is the base for all types of items. It includes the Linkable role
+for generating game links, defined in Linkable.pm.
+
+For some types, additional roles are included into this base class which define
+additional attributes.
 
 =head3 Attributes
 
@@ -169,6 +176,12 @@ around 'BUILDARGS', sub {
 
   $class->$orig($args);
 };
+
+# Method required to provide type and ID to Linkable role
+sub _gl_data {
+  my ($self) = @_;
+  return (ITEM_LINK_TYPE, $self->item_id);
+}
 
 ####################
 # Item->Infixed role
@@ -750,8 +763,8 @@ The weapon's defense value. Only for weapon_type = 'shield'.
 
 =cut
 
-enum 'WeaponType', [qw( Axe Dagger Focus Greatsword Hammer Harpoon LongBow Mace Pistol Rifle Scepter
-                        Shield ShortBow Speargun Staff Sword Torch Toy Trident TwoHandedToy Warhorn )];
+enum 'WeaponType', [qw( Axe Dagger Focus Greatsword Hammer Harpoon LargeBundle LongBow Mace Pistol Rifle
+                        Scepter Shield ShortBow Speargun Staff Sword Torch Toy Trident TwoHandedToy Warhorn )];
 
 has 'weapon_type'     => ( is => 'ro', isa => 'WeaponType',   required => 1 );
 has 'damage_type'     => ( is => 'ro', isa => 'Str',          required => 1 );

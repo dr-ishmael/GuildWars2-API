@@ -58,7 +58,7 @@ has 'retries'         => ( is => 'rw', isa => 'Int', default => 3 );
 has 'language'        => ( is => 'rw', isa => 'Lang', default => 'en' );
 has 'nocache'         => ( is => 'ro', isa => 'Bool', default => undef );
 has 'cache_dir'       => ( is => 'ro', isa => 'Str', default => './gw2api-cache' );
-has 'cache_age'       => ( is => 'rw', isa => 'Str', default => '24 hours' );
+has 'cache_age'       => ( is => 'rw', isa => 'Str', default => '7 days' );
 has 'event_cache_age' => ( is => 'rw', isa => 'Str', default => '30 seconds' );
 has 'wvw_cache_age'   => ( is => 'rw', isa => 'Str', default => '5 minutes' );
 has 'json'            => ( is => 'ro', isa => 'JSON::PP', default => sub{ JSON::PP->new } );
@@ -135,6 +135,7 @@ sub _api_request {
     # If no response or error after using up retries, die
     if (!defined($response)) {
       Carp::carp "Error getting URL [$url]:\n" . $response->status_line();
+      $self->cache->remove($url) unless defined $self->{nocache};
       return undef;
     }
 
@@ -149,11 +150,13 @@ sub _api_request {
   eval { $decoded = $self->json->decode ($response) };
   if ($@) {
     Carp::carp "Error decoding JSON:\n" . $@;
+    $self->cache->remove($url) unless defined $self->{nocache};
     return undef;
   }
 
   if (defined($decoded->{error})) {
     Carp::carp "API error at [$url]";
+    $self->cache->remove($url) unless defined $self->{nocache};
   } else {
     $self->_set_status(1);
   }

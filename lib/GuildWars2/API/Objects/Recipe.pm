@@ -13,8 +13,13 @@ This subclass of GuildWars2::API::Objects defines the Recipe object.
 # Recipe
 ####################
 package GuildWars2::API::Objects::Recipe;
+use namespace::autoclean;
 use Moose;
 use Moose::Util::TypeConstraints;
+
+use GuildWars2::API::Constants;
+
+with 'GuildWars2::API::Objects::Linkable';
 
 =pod
 
@@ -151,10 +156,6 @@ type, however.
 
 =cut
 
-use constant DISC_IDX => 0;
-use constant AUTO_IDX => 1;
-use constant ITEM_IDX => 2;
-
 my %_default_disciplines = map { $_ => 0 } qw( armorsmith artificer chef huntsman jeweler leatherworker tailor weaponsmith );
 
 enum 'RecipeType', [qw(
@@ -204,6 +205,12 @@ around 'BUILDARGS', sub {
 
   $class->$orig($args);
 };
+
+# Method required to provide type and ID to Linkable role
+sub _gl_data {
+  my ($self) = @_;
+  return (RECIPE_LINK_TYPE, $self->recipe_id);
+}
 
 sub unlock_method {
   my ($self) = @_;

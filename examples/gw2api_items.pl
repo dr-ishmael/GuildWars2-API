@@ -37,7 +37,7 @@ open(OATTRB, $mode, "item_attributes.csv") or die "unable to open file: $!\n";
 open(ORNBNS, $mode, "item_rune_bonuses.csv") or die "unable to open file: $!\n";
 
 if ($mode eq ">") {
-  say OMAIN "item_id|item_name|item_type|item_subtype|level|rarity|description|vendor_value"
+  say OMAIN "item_id|game_link|item_name|item_type|item_subtype|level|rarity|description|vendor_value"
           . "|Activity|Dungeon|Pve|Pvp|PvpLobby|Wvw" # game_type_flags
           . "|AccountBound|HideSuffix|NoMysticForge|NoSalvage|NoSell|NotUpgradeable|NoUnderwater|SoulbindOnAcquire|SoulBindOnUse|Unique" #item_flags
           ;
@@ -64,6 +64,7 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
 
   my $item = $api->get_item($item_id);
 
+  my $game_link       = $item->game_link;
   my $item_name       = $item->item_name;
   my $item_type       = $item->item_type;
   my $item_subtype    = $item->item_subtype || "";
@@ -74,7 +75,7 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
   my $game_type_flags = $item->game_type_flags;
   my $item_flags      = $item->item_flags;
 
-  say OMAIN "$item_id|$item_name|$item_type|$item_subtype|$level|$rarity|$description|$vendor_value"
+  say OMAIN "$item_id|$game_link|$item_name|$item_type|$item_subtype|$level|$rarity|$description|$vendor_value"
             . '|' . join('|', map { $game_type_flags->{$_} } sort keys %$game_type_flags )
             . '|' . join('|', map { $item_flags->{$_} } sort keys %$item_flags )
             ;

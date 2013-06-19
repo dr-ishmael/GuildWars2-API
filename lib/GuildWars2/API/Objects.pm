@@ -16,13 +16,16 @@ GuildWars2::API. Some objects also have methods attached to them.
 
 =head1 SUBCLASSES
 
-See the individual modules for documentation of these subclasses
+See the individual modules for documentation of these subclasses.
 
 =item * GuildWars2::API::Objects::Color
 =item * GuildWars2::API::Objects::Guild
 =item * GuildWars2::API::Objects::Item
 =item * GuildWars2::API::Objects::Recipe
 
+This module defines a role for use by multiple object types.
+
+=item * GuildWars2::API::Objects::Linkable
 
 =cut
 
@@ -30,6 +33,8 @@ use GuildWars2::API::Objects::Color;
 use GuildWars2::API::Objects::Guild;
 use GuildWars2::API::Objects::Item;
 use GuildWars2::API::Objects::Recipe;
+
+use GuildWars2::API::Objects::Linkable;
 
 1;
 
