@@ -128,9 +128,9 @@ A hash of boolean flags identifying how the item behaves. Keys and descriptions:
 
 =cut
 
-my %_default_gametypes = map { $_ => 0 } qw( Activity Dungeon Pve Pvp PvpLobby Wvw );
+my @_default_gametypes = qw( Activity Dungeon Pve Pvp PvpLobby Wvw );
 
-my %_default_flags = map { $_ => 0 } qw( AccountBound HideSuffix NoMysticForge NoSalvage NoSell NotUpgradeable NoUnderwater SoulbindOnAcquire SoulBindOnUse Unique );
+my @_default_flags = qw( AccountBound HideSuffix NoMysticForge NoSalvage NoSell NotUpgradeable NoUnderwater SoulbindOnAcquire SoulBindOnUse Unique );
 
 enum 'ItemType', [qw(
     Armor Back Bag Consumable Container CraftingMaterial Gathering Gizmo MiniPet
@@ -160,7 +160,7 @@ around 'BUILDARGS', sub {
 
   # Transform from array[str] to hash[bool]
   if(my $gametypes = delete $args->{game_types}) {
-    $args->{game_type_flags} = \%_default_gametypes;
+    $args->{game_type_flags} = { map { $_ => 0 } @_default_gametypes };
     foreach my $g (@$gametypes) {
       $args->{game_type_flags}->{$g} = 1;
     }
@@ -168,7 +168,7 @@ around 'BUILDARGS', sub {
 
   # Transform from array[str] to hash[bool]
   if(my $flags = delete $args->{flags}) {
-    $args->{item_flags} = \%_default_flags;
+    $args->{item_flags} = { map { $_ => 0 } @_default_flags };
     foreach my $f (@$flags) {
       $args->{item_flags}->{$f} = 1;
     }

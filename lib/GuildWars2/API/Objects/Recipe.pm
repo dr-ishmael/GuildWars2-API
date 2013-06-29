@@ -156,7 +156,7 @@ type, however.
 
 =cut
 
-my %_default_disciplines = map { $_ => 0 } qw( armorsmith artificer chef huntsman jeweler leatherworker tailor weaponsmith );
+my @_default_disciplines = qw( armorsmith artificer chef huntsman jeweler leatherworker tailor weaponsmith );
 
 enum 'RecipeType', [qw(
     Amulet Axe Bag Boots Bulk Coat Component Consumable Dagger Dessert Dye
@@ -180,7 +180,7 @@ around 'BUILDARGS', sub {
   my ($orig, $class, $args) = @_;
 
   if(my $disciplines = delete $args->{disciplines}) {
-    $args->{disciplines} = \%_default_disciplines;
+    $args->{disciplines} = { map { $_ => 0 } @_default_disciplines };
     foreach my $d (@$disciplines) {
       $args->{disciplines}->{lc($d)} = 1;
     }
