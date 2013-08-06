@@ -26,12 +26,8 @@ if (defined($ARGV[0]) && $ARGV[0] eq "clean") {
 
 open(OMAIN, $mode, "recipes.csv") or die "unable to open file: $!\n";
 
-open(OINGRD, $mode, "recipe_ingredients.csv") or die "unable to open file: $!\n";
-
 if ($mode eq ">") {
-  say OMAIN "recipe_id|game_link|type|output_item_id|output_item_count|min_rating|time_to_craft_ms|unlock_method|armorsmith|artificer|chef|huntsman|jeweler|leatherworker|tailor|weaponsmith";
-
-  say OINGRD "recipe_id|item_id|count";
+  say OMAIN "recipe_id|game_link|type|output_item_id|output_item_count|min_rating|time_to_craft_ms|unlock_method|armorsmith|artificer|chef|huntsman|jeweler|leatherworker|tailor|weaponsmith|ingredient_id_1|ingredient_qty_1|ingredient_id_2|ingredient_qty_2|ingredient_id_3|ingredient_qty_3|ingredient_id_4|ingredient_qty_4";
 }
 
 my $i = 0;
@@ -53,13 +49,8 @@ foreach $recipe_id (sort { $a <=> $b } $api->list_recipes()) {
 
   say OMAIN "$recipe_id|$game_link|$recipe_type|$output_item_id|$output_item_count|$min_rating|$time_to_craft_ms|$unlock_method"
             . "|" . join('|', map { $disciplines->{$_} } sort keys %$disciplines)
+            . "|" . join('|', map { $_.'|'.$ingredients->{$_} } sort keys %$ingredients)
             ;
-
-  foreach my $item_id (keys %$ingredients) {
-    my $count   = $ingredients->{$item_id};
-
-    say OINGRD "$recipe_id|$item_id|$count";
-  }
 
   say ($i-1) if ($i++ % 1000) == 0;
 }
@@ -67,7 +58,6 @@ foreach $recipe_id (sort { $a <=> $b } $api->list_recipes()) {
 say "$i recipes processed.";
 
 close (OMAIN);
-close (OINGRD);
 
 exit;
 

@@ -149,6 +149,8 @@ has 'rarity'          => ( is => 'ro', isa => 'ItemRarity',     required => 1 );
 has 'vendor_value'    => ( is => 'ro', isa => 'Int',            required => 1 );
 has 'game_type_flags' => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
 has 'item_flags'      => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
+has 'icon_file_id'    => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'icon_signature'  => ( is => 'ro', isa => 'Str',            required => 1 );
 
 around 'BUILDARGS', sub {
   my ($orig, $class, $args) = @_;
@@ -157,6 +159,7 @@ around 'BUILDARGS', sub {
   if(my $a = delete $args->{name}) { $args->{item_name} = $a }
   if(my $a = delete $args->{type}) { $args->{item_type} = $a }
   if(my $a = delete $args->{type_data}->{type}) { $args->{item_subtype} = $a }
+  if(my $a = delete $args->{icon_file_signature}) { $args->{icon_signature} = $a }
 
   # Transform from array[str] to hash[bool]
   if(my $gametypes = delete $args->{game_types}) {

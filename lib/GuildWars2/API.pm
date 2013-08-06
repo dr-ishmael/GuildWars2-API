@@ -22,6 +22,7 @@ use Moose::Util::TypeConstraints;
 my $_api_version          = 'v1';
 
 my $_base_url             = 'https://api.guildwars2.com/' . $_api_version;
+my $_base_render_url      = "https://render.guildwars2.com/file";
 
 # Pagenames of the available interfaces
 my $_url_build            = 'build.json';
@@ -44,6 +45,7 @@ my $_url_recipe_details   = 'recipe_details.json';
 my $_url_guild_details    = 'guild_details.json';
 
 my $_url_colors           = 'colors.json';
+
 
 # Supported languages
 enum 'Lang', [qw(de en es fr)];
@@ -462,6 +464,28 @@ sub get_guild {
 
   return $guild_obj;
 }
+
+sub get_icon_url {
+  my ($self, $_obj, $_format) = @_;
+
+  # Default to png format
+  $_format = "png" if !defined($_format);
+
+  Carp::croak("Unrecognized icon format [$_format]; valid formats are jpg and png.")
+    if ($_format ne "png" && $_format ne "jpg");
+
+  return $_base_render_url . $_obj->{icon_signature} . '/' . $_obj->{file_id} . '.' . $_format;
+}
+
+sub get_icon {
+  my ($self, $_format) = @_;
+
+  my $render_url = $self->get_icon_url($_format);
+
+### build an icon cache similar to API response cache
+}
+
+
 
 1;
 

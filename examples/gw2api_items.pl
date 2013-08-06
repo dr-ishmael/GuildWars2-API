@@ -40,6 +40,7 @@ if ($mode eq ">") {
   say OMAIN "item_id|game_link|item_name|item_type|item_subtype|level|rarity|description|vendor_value"
           . "|Activity|Dungeon|Pve|Pvp|PvpLobby|Wvw" # game_type_flags
           . "|AccountBound|HideSuffix|NoMysticForge|NoSalvage|NoSell|NotUpgradeable|NoUnderwater|SoulbindOnAcquire|SoulBindOnUse|Unique" #item_flags
+          . "|icon_file_id|icon_signature"
           ;
 
   say OARMOR "item_id|armor_type|armor_class|defense|race|infusion_slot|suffix_item_id|buff_skill_id|buff_desc";
@@ -61,6 +62,8 @@ my $i = 0;
 foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
 
   next if ($item_id ~~ @prior_ids);
+  next if ($item_id == 43948);
+  next if ($item_id == 43949);
 
   my $item = $api->get_item($item_id);
 
@@ -74,10 +77,13 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
   my $vendor_value    = $item->vendor_value;
   my $game_type_flags = $item->game_type_flags;
   my $item_flags      = $item->item_flags;
+  my $icon_file_id    = $item->icon_file_id;
+  my $icon_signature  = $item->icon_signature;
 
   say OMAIN "$item_id|$game_link|$item_name|$item_type|$item_subtype|$level|$rarity|$description|$vendor_value"
             . '|' . join('|', map { $game_type_flags->{$_} } sort keys %$game_type_flags )
             . '|' . join('|', map { $item_flags->{$_} } sort keys %$item_flags )
+            . "|$icon_file_id|$icon_signature"
             ;
 
   #
