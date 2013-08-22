@@ -489,6 +489,7 @@ For Unlock subtypes, the item's Unlock sub-subtype.
  BankTab
  CraftingRecipe
  Dye
+ Unknown
 
 =item unlock_color_id
 
@@ -507,7 +508,7 @@ item. This can be used to look up the recipe data with $api-
 =cut
 
 enum 'ConsType', [qw( AppearanceChange Booze ContractNpc Food Generic Halloween Immediate Transmutation Unlock Utility )];
-enum 'UnlockType', [qw( BagSlot BankTab CraftingRecipe Dye )];
+enum 'UnlockType', [qw( BagSlot BankTab CraftingRecipe Dye Unknown )];
 
 has 'consumable_type'     => ( is => 'ro', isa => 'ConsType',   required => 1 );
 has 'food_duration_ms'    => ( is => 'ro', isa => 'Str' );
