@@ -507,7 +507,7 @@ item. This can be used to look up the recipe data with $api-
 
 =cut
 
-enum 'ConsType', [qw( AppearanceChange Booze ContractNpc Food Generic Halloween Immediate Transmutation Unlock Utility )];
+enum 'ConsType', [qw( AppearanceChange Booze ContractNpc Food Generic Halloween Immediate Transmutation Unknown Unlock Utility )];
 enum 'UnlockType', [qw( BagSlot BankTab CraftingRecipe Dye Unknown )];
 
 has 'consumable_type'     => ( is => 'ro', isa => 'ConsType',   required => 1 );

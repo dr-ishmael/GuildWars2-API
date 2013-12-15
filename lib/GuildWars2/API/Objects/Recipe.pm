@@ -164,6 +164,7 @@ enum 'RecipeType', [qw(
     Inscription Insignia Leggings LongBow Mace Meal Pistol Potion Refinement
     Rifle Ring Scepter Seasoning Shield ShortBow Shoulders Snack Soup Speargun
     Staff Sword Torch Trident UpgradeComponent Warhorn
+    Unknown
   )];
 
 has 'recipe_id'           => ( is => 'ro', isa => 'Int',            required => 1 );
