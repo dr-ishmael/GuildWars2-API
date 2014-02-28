@@ -66,7 +66,7 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
   my $item = $api->get_item($item_id);
 
   my $game_link       = $item->game_link;
-  my $item_name       = $item->item_name;
+  (my $item_name      = $item->item_name) =~ s/\n//g;
   my $item_type       = $item->item_type;
   my $item_subtype    = $item->item_subtype || "";
   my $level           = $item->level;
@@ -95,7 +95,7 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
     my $infusion_slot   = $item->infusion_slot || "";
     my $suffix_item_id  = $item->suffix_item_id || "";
     my $buff_skill_id   = $item->buff_skill_id || "";
-    (my $buff_desc       = $item->buff_desc || "") =~ s/\n/<br>/g;
+    (my $buff_desc      = $item->buff_desc || "") =~ s/\n/<br>/g;
 
     say OARMOR "$item_id|$armor_type|$armor_class|$defense|$race|$infusion_slot|$suffix_item_id|$buff_skill_id|$buff_desc";
 
@@ -109,7 +109,7 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
     my $infusion_slot   = $item->infusion_slot || "";
     my $suffix_item_id  = $item->suffix_item_id || "";
     my $buff_skill_id   = $item->buff_skill_id || "";
-    (my $buff_desc       = $item->buff_desc || "") =~ s/\n/<br>/g;
+    (my $buff_desc      = $item->buff_desc || "") =~ s/\n/<br>/g;
 
     say OBACKX "$item_id|$infusion_slot|$suffix_item_id|$buff_skill_id|$buff_desc";
 
@@ -132,12 +132,11 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
   if ($item_type eq "Consumable") {
     my $consumable_type     = $item->consumable_type;
     my $food_duration_ms    = $item->food_duration_ms || "";
-    my $food_description    = $item->food_description || "";
+    (my $food_description   = $item->food_description || "") =~ s/\n/<br>/g;
     my $unlock_type         = $item->unlock_type || "";
     my $unlock_color_id     = $item->unlock_color_id || "";
     my $unlock_recipe_id    = $item->unlock_recipe_id || "";
 
-    $food_description =~ s/\n/<br>/g;
     say OCONSM "$item_id|$consumable_type|$food_duration_ms|$food_description|$unlock_type|$unlock_color_id|$unlock_recipe_id";
   }
 
@@ -159,7 +158,7 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
     my $infusion_slot   = $item->infusion_slot || "";
     my $suffix_item_id  = $item->suffix_item_id || "";
     my $buff_skill_id   = $item->buff_skill_id || "";
-    (my $buff_desc       = $item->buff_desc || "") =~ s/\n/<br>/g;
+    (my $buff_desc      = $item->buff_desc || "") =~ s/\n/<br>/g;
 
     say OTRNKT "$item_id|$trinket_type|$infusion_slot|$suffix_item_id|$buff_skill_id|$buff_desc";
 
@@ -175,7 +174,7 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
     my $suffix          = $item->suffix || "";
     my $infusion_type   = $item->infusion_type || "";
     my $buff_skill_id   = $item->buff_skill_id || "";
-    (my $buff_desc       = $item->buff_desc || "") =~ s/\n/<br>/g;
+    (my $buff_desc      = $item->buff_desc || "") =~ s/\n/<br>/g;
 
     say OUPGRD "$item_id|$upgrade_type|$applies_to|$suffix|$infusion_type|$buff_skill_id|$buff_desc";
 
@@ -200,7 +199,7 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
     my $infusion_slot   = $item->infusion_slot || "";
     my $suffix_item_id  = $item->suffix_item_id || "";
     my $buff_skill_id   = $item->buff_skill_id || "";
-    (my $buff_desc       = $item->buff_desc || "") =~ s/\n/<br>/g;
+    (my $buff_desc      = $item->buff_desc || "") =~ s/\n/<br>/g;
 
     say OWEAPN "$item_id|$weapon_type|$damage_type|$min_strength|$max_strength|$defense|$infusion_slot|$suffix_item_id|$buff_skill_id|$buff_desc";
 
