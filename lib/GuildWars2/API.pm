@@ -151,7 +151,7 @@ sub _api_request {
   my $decoded;
   eval { $decoded = $self->json->decode ($response) };
   if ($@) {
-    Carp::carp "Error decoding JSON:\n" . $@;
+    Carp::carp "Error decoding JSON for URL [$url]:\n" . $@;
     $self->cache->remove($url) unless defined $self->{nocache};
     return undef;
   }
