@@ -28,7 +28,7 @@ with 'GuildWars2::API::Objects::Linkable';
 =head2 Recipe
 
 The Recipe object represents a crafting recipe in Guild Wars 2. It is returned
-by the $api->get_recipe() method.
+by the C<$api->get_recipe()> method.
 
 =head3 Attributes
 
@@ -97,6 +97,19 @@ item.
 The base time, in milliseconds, that the recipe takes to complete. When crafting
 multiples of a recipe at once, this time gradually reduces to about 1/3 of its
 original value.
+
+=head3 Methods
+
+=over
+
+=item $recipe->game_link
+
+Encodes and returns a game link using the recipe's C<recipe_id>. This link can
+be copied and pasted into the in-game chat window to generate a chat link for
+the recipe. Hovering on the chat link will produce a tooltip with the recipe's
+details.
+
+=back
 
 =head3 Type/Discipline matrix
 

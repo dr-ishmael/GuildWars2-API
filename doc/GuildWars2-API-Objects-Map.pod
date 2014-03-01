@@ -131,6 +131,19 @@ An array of (x, y) coordinates defining the point's location.
 
 =back
 
+=head3 Methods
+
+=over
+
+=item $poi->game_link
+
+Encodes and returns a game link using the point's C<poi_id>. This link can be
+copied and pasted into the in-game chat window to generate a chat link for
+the point. Clicking the chat link will open the world map and pan to the point's
+location.
+
+=back
+
 
 =head2 Task
 

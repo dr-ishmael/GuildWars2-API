@@ -108,6 +108,20 @@ A hash of boolean flags identifying how the item behaves. Keys and descriptions:
 
 =back
 
+=head3 Methods
+
+=over
+
+=item $item->game_link
+
+Encodes and returns a game link using the item's C<item_id>. This link can be
+copied and pasted into the in-game chat window to generate a chat link for the
+item. Hovering on the chat link will produce a tooltip with the item's details,
+and right-clicking the chat link for certain item types will give a shortcut
+menu.
+
+=back
+
 
 =head2 Item::Infixed
 
