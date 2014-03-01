@@ -6,9 +6,9 @@ GuildWars2::API - An interface library for the Guild Wars 2 API
 
 =head1 SYNOPSIS
 
- require GuildWars2::API;
+ use GuildWars2::API;
 
- $api = GuildWars2::API->new;
+ $api = GuildWars2::API->new();
 
  # Check the current state of an event on all worlds
 
@@ -36,8 +36,7 @@ GuildWars2::API - An interface library for the Guild Wars 2 API
 =head1 DESCRIPTION
 
 GuildWars2::API is a class module that provides a set of standard interfaces to
-the L<Guild Wars 2 API|https://forum-en.guildwars2.com/forum/community/api/API-
-Documentation>.
+the L<Guild Wars 2 API|http://wiki.guildwars2.com/wiki/API:Main>.
 
 =head1 Constructor
 
@@ -132,6 +131,8 @@ from the API.
 
 HTTP interface. Used for interacting with the API.
 
+=back
+
 =head1 Methods
 
 =over
@@ -161,7 +162,7 @@ override the current default language.
 
 Returns a string containing the current state of a specific event on a specific
 world. Event state will be one of the following values (definitions are from
-L<the official API documentation|https://forum-en.guildwars2.com/forum/community/api/API-Documentation/>):
+L<the official API documentation|http://wiki.guildwars2.com/wiki/API:1/events>):
 
  State        Meaning
  ------------ ---------------------------------------------------------
@@ -238,368 +239,44 @@ has the following structure:
      ],
  )
 
-=item $api->items
+=item $api->list_items
 
 Returns an array containing all "discovered" item IDs.
 
-=item $api->item_details( $item_id )
-=item $api->item_details( $item_id, $lang )
+=item $api->get_item( $item_id )
+=item $api->get_item( $item_id, $lang )
 
-Returns a hash containing detailed information for the given item ID. An
-optional language parameter can be passed to override the default language. The
-hash has the following structure (elements marked with *** are enumerated below
-the main structure):
+Retrieves data for the given item_id (in the given language or the current
+default) and returns a GuildWars2::API::Objects::Item object.
 
- (
-   item_id      => [INT],           # Item ID
-   name         => [STRING],        # Item name
-   description  => [STRING],        # Item description
-   type         => [STRING],        # Item type***
-   level        => [INT],           # Required level
-   rarity       => [STRING],        # Rarity***
-   vendor_value => [INT],           # Value when sold to a merchant
-   game_types   => @([STRING],...), # Game types where item can be used***
-   flags        => @([STRING],...), # Behavioral flags***
-   restrictions => @([STRING],...), # Racial restrictions***
-
-   # One of the following data elements corresponding to the value of "type" above.
-   # Note that some item types do not have a corresponding data element.
-
-   armor =>
-     {
-       type           => [STRING],  # Armor type***
-       weight_class   => [STRING],  # Armor weight class (Light, Medium, Heavy, Clothing)
-       defense        => [INT],     # Defense value
-       infusion_slots => @( ),      # Infusion slots***
-       infix_upgrade  => %( ),      # Infix upgrade***
-       suffix_item_id => [INT],     # Item ID of attached upgrade component
-     }
-
-   back =>
-     {
-       infusion_slots => @( ),      # Infusion slots***
-       infix_upgrade  => %( ),      # Infix upgrade***
-       suffix_item_id => [INT],     # Item ID of attached upgrade component
-     }
-
-   bag =>
-     {
-       no_sell_or_sort => [BOOL],   # Items in bag are not sorted or shown to merchants
-       size            => [INT],    # Number of slots
-     }
-
-   consumable =>
-     {
-       type         => [STRING],    # Consumable type***
-       duration_ms  => [INT],       # Duration of nourishment effect
-       description  => [STRING],    # Description of nourishment effect
-                                    # (Nourishment effects are only on Food and Utility consumables)
-       unlock_type  => [STRING],    # Unlock subtype (BagSlot, BankTab, CraftingRecipe, Dye)
-       color_id     => [INT],       # Color_id unlocked by a Dye (cf. $api->colors)
-       recipe_id    => [INT],       # Recipe_id unlocked by a CraftingRecipe (cf. $api->recipe_details)
-     }
-
-   container =>
-     {
-       type => [STRING],            # Container type (Default, GiftBox)
-     }
-
-   gathering =>
-     {
-       type => [STRING],            # Gathering type (Foraging, Logging, Mining)
-     }
-
-   gizmo =>
-     {
-       type => [STRING],            # Gizmo type (Default, RentableContractNpc, UnlimitedConsumable)
-     }
-
-   tool =>
-     {
-       type => [STRING],            # Tool type (Salvage)
-     }
-
-   trinket =>
-     {
-       type => [STRING],            # Trinket type (Accessory, Amulet, Ring)
-       infusion_slots => @( ),      # Infusion slots***
-       infix_upgrade  => %( ),      # Infix upgrade***
-       suffix_item_id => [INT],     # Item ID of attached upgrade component
-     }
-
-   upgrade_component =>
-     {
-       type           => [STRING],        # Upgrade type (Default, Gem, Rune, Sigil)
-       flags          => @([STRING],...), # Upgrade flags***
-       infusion_upgrade_flags => @([STRING],...), # Infusion flags (Defense, Offense, Utility)
-       bonuses        => @([STRING],...), # Rune bonuses
-       infix_upgrade  => %( ),            # Infix upgrade***
-       suffix         => [STRING],        # Suffix bestowed by the upgrade
-     }
-
-   weapon =>
-     {
-       type        => [STRING],     # Weapon type***
-       damage_type => [STRING],     # Damage type (Physical, Fire, Ice, Lightning)
-       min_power   => [INT],        # Minimum weapon strength value
-       max_power   => [INT],        # Maximum weapon strength value
-       defense     => [INT],        # Defense value
-       infusion_slots => @( ),      # Infusion slots***
-       infix_upgrade  => %( ),      # Infix upgrade***
-       suffix_item_id => [INT],     # Item ID of attached upgrade component
-     }
- )
-
-The following elements are shared between different type data elements:
-
- infusion_slots =>
-   [
-     {
-       flags  => @([STRING]...),  # Flags on the infusion slot (Defense, Offense, Utility)
-     },
-     ...                          # repeat for multiple infusion slots (no item has >1 currently)
-   ]
-
- infix_upgrade =>
-   {
-     buff       =>
-       {
-         skill_id     => [INT],     # Skill ID of the infixed buff skill
-         description  => [STRING],  # Description of the infixed buff skill
-       },
-     attributes =>
-       [
-         {
-           attribute  => [STRING],  # Attribute name
-                                    #   (ConditionDamage, CritDamage, Healing,
-                                    #    Power, Precision, Toughness, Vitality)
-           modifier   => [INT],     # Value of attribute bonus
-         },
-         ...                        # Repeat for each attribute
-       ]
-   }
-
-Enumerations:
-
-=over
-
-=item Item type
-
- Armor
- Back
- Bag
- Consumable
- Container
- CraftingMaterial
- Gathering
- Gizmo
- MiniPet
- Tool
- Trinket
- Trophy
- UpgradeComponent
- Weapon
-
-=item Rarity
-
- Junk
- Basic
- Fine
- Masterwork
- Rare
- Exotic
- Ascended
- Legendary
-
-=item Game types
-
- Activity
- Dungeon
- Pve
- Pvp
- PvpLobby
- Wvw
-
-=item Flags
-
- AccountBound
- HideSuffix
- NoMysticForge
- NoSalvage
- NoSell
- NotUpgradeable
- NoUnderwater
- SoulBindOnAcquire
- SoulBindOnUse
- Unique
-
-=item  Restrictions
-
- Asura
- Charr
- Human
- Norn
- Sylvari
-
-*NOTE: There is a single item with restrictions of ('Guardian', 'Warrior'); this is probably a mistake in the API build.
-
-=item Armor type
-
- Boots
- Coat
- Gloves
- Helm
- HelmAquatic
- Leggings
- Shoulders
-
-=item Consumable type
-
- AppearanceChange
- ContractNpc
- Food
- Generic
- Halloween
- Immediate
- Transmutation
- Unlock
- Utility
-
-=item Upgrade component flags
-
- # Armor
- HeavyArmor
- LightArmor
- MediumArmor
-
- # Weapons
- Axe
- LongBow
- ShortBow
- Dagger
- Focus
- Greatsword
- Hammer
- Harpoon
- Mace
- Pistol
- Rifle
- Scepter
- Shield
- Speargun
- Staff
- Sword
- Torch
- Trident
- Warhorn
-
- # Trinkets
- Trinket
-
-=item Weapon type
-
- Axe
- Dagger
- Focus
- Greatsword
- Hammer
- Harpoon
- LongBow
- Mace
- Pistol
- Rifle
- Scepter
- Shield
- ShortBow
- Speargun
- Staff
- Sword
- Torch
- Toy
- Trident
- TwoHandedToy
- Warhorn
-
-=back
-
-=item $api->recipes
+=item $api->list_recipes
 
 Returns an array containing all "discovered" recipe IDs.
 
-=item $api->recipe_details( $recipe_id )
-=item $api->recipe_details( $recipe_id, $lang )
+=item $api->get_recipe( $recipe_id )
+=item $api->get_recipe( $recipe_id, $lang )
 
-Returns a hash containing detailed information for the given recipe ID. An
-optional language parameter can be passed to override the default language. The
-hash has the following structure:
+Retrieves data for the given recipe_id (in the given language or the current
+default) and returns a GuildWars2::API::Objects::Recipe object.
 
- (
-   recipe_id          => [INT],         # Recipe ID
-   type               => [STRING],      # Recipe type***
-   output_item_id     => [INT],         # Item ID of the recipe output
-   output_item_count  => [INT],         # Quantity of item output
-   min_rating         => [INT],         # Required rating in the associated crafting discipline
-   time_to_craft_ms   => [INT],         # Duration of crafting the recipe
-   disciplines        => @([STRING]...) # List of disciplines that can craft the recipe
-                                        # (Armorsmith, Artificer, Chef, Huntsman, Jeweler,
-                                        #  Leatherworker, Tailor, Weaponsmith)
-   flags              => @([STRING]...) # If recipe is not learned through Discovery (AutoLearned, LearnedFromItem)
-   ingredients        =>
-     [
-       {
-         item_id  => [INT],           # Item ID of the ingredient
-         count    => [INT],           # Required quantity of the ingredient
-       },
-       ...                            # Repeat for each ingredient, up to 4
-     ],
- )
-
-=item $api->colors
-=item $api->colors( $lang )
+=item $api->get_colors
+=item $api->get_colors( $lang )
 
 Returns a hash, keyed on color_id, containing color information for all colors
-in the game. Each entry is a hashref with the following structure:
-
- {
-   name     => [STRING],      # Color name
-   base_rgb => array([INT]),  # Base RGB color for applying transformations
-   cloth    =>                # Transformation data for cloth material
-     {
-       brightness => [FLOAT],       # Brightness shift (RGB255)
-       contrast   => [FLOAT],       # Contrast shift (RGB255)
-       hue        => [FLOAT],       # Hue shift (0 <= H <= 360)
-       saturation => [FLOAT],       # Saturation shift (0 <= S <= 1)
-       lightness  => [FLOAT],       # Lightness shift (0 <= L <= 1)
-       rgb        => array([INT]),  # Pre-calculated RGB values from the base_rgb color
-     },
-   leather  => { ... },       # Transformation data for leather material (same structure as cloth)
-   metal    => { ... },       # Transformation data for metal material (same structure as cloth)
- }
+in the game. Each hash element is a GuildWars2::API::Objects::Color object.
 
 =item $api->get_guild( $guild_id )
 =item $api->get_guild( $guild_name )
 
-Retrieves data for the given guild ID or guild name and returns an object
-containing that data. If the argument doesn't match the pattern of a guild ID,
-it is assumed to be a guild name. The object contains the following attributes:
+Retrieves data for the given guild ID or guild name and returns a
+GuildWars2::API::Objects::Guild object. If the argument doesn't match the
+pattern of a guild ID, it is assumed to be a guild name.
 
- (
-   guild_id   => [STRING]   # Guild ID
-   guild_name => [STRING]   # Guild name
-   tag        => [STRING]   # Guild tag
-   emblem     =>            # Guild emblem object
-     {
-       background_id                  => [INT]    # ID of background texture
-       foreground_id                  => [INT]    # ID of foreground texture
-       flip_background_horizontal     => [BOOL]   # Background is flipped horizontally
-       flip_background_vertical       => [BOOL]   # Background is flipped vertically
-       flip_foreground_horizontal     => [BOOL]   # Foreground is flipped horizontally
-       flip_foreground_vertical       => [BOOL]   # Foreground is flipped vertically
-       background_color_id            => [INT]    # Color ID of background color
-       foreground_primary_color_id    => [INT]    # Color ID of primary foreground color
-       foreground_secondary_color_id  => [INT]    # Color ID of secondary foreground color
-     }
- )
+=item $api->get_maps
+=item $api->get_maps( $continent_id, $floor_id, $lang )
+
+Retreives a hash, keyed on region_id, containing map information on the world
+of Tyria. Each has element is a GuildWars2::API::Objects::Region object.
 
 =back
 
@@ -615,5 +292,3 @@ This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
 
 =cut
-
-__END__

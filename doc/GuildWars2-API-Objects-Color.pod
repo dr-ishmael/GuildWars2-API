@@ -1,0 +1,124 @@
+=pod
+
+=head1 DESCRIPTION
+
+This subclass of GuildWars2::API::Objects defines the Color and Color::Material
+objects.
+
+
+=head1 CLASSES
+
+=head2 Color
+
+The Color object represents a color definition in Guild Wars 2. It is returned
+by the C<$api->get_colors()> method.
+
+=head3 Attributes
+
+=over
+
+=item name
+
+The color's name.
+
+=item base_rgb
+=item base_rgb_hex
+
+The base RGB color for the color's transformations. Calling C<base_rgb> returns
+the color as an array of integers normalized to 255; calling C<base_rgb_hex>
+returns it as a hexadecimal string.
+
+=item cloth
+=item leather
+=item metal
+
+GuildWars2::API::Objects::Color::Material objects containing the detailed
+information for the color transformations on each material.
+
+=back
+
+
+=head2 Color::Material
+
+The Color::Material subobject represents the color transformation parameters for a specific material.
+
+=head3 Attributes
+
+=over
+
+=item brightness
+=item contrast
+=item hue
+=item saturation
+=item lightness
+
+The components of the color transformation. Brightness and hue are integers, the
+others are floating-point numbers.
+
+=item * rgb
+=item * rgb_hex
+
+The pre-computed final RGB value of the color on this material from applying the
+color transformation to the color's base_rgb value. Calling C<rgb> returns the
+color as an array of integers normalized to 255; calling C<rgb_hex> returns it
+as a hexadecimal string.
+
+=item * transform
+
+The computed transformation matrix for this material. Not defined until the
+C<generate_transform()> method is called on the material. Utilized by calling
+the C<apply_transform($rgb)> method on an RGB value.
+
+=back
+
+=head3 Methods
+
+=over
+
+=item $material->generate_transform()
+
+Generates the transform matrix for the material and stores it in the
+C<transform> attribute.
+
+=item $material->apply_transform( $rgb )
+
+Applies the computed C<transform> matrix to the given RGB value. Will generate
+the C<transform> matrix if it is undefined. Returns a
+GuildWars2::API::Objects::Color::RGB object.
+
+=back
+
+
+=head2 Color::RGB
+
+The Color::RGB subobject is the output of the Color::Material::apply_transform()
+method and is a representation of an RGB color, using integers normalized to
+255.
+
+=head3 Attributes
+
+=over
+
+=item red
+=item green
+=item blue
+
+The red, green, and blue component values of the color.
+
+=back
+
+=head3 Methods
+
+=over
+
+=item as_array()
+
+Returns the red, green, and blue component values in an array.
+
+=item as_hex()
+
+Returns the RGB value as a hex string.
+
+=back
+
+=cut

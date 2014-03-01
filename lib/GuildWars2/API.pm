@@ -28,8 +28,14 @@ my $_base_render_url      = "https://render.guildwars2.com/file";
 my $_url_build            = 'build.json';
 
 my $_url_events           = 'events.json';
+my $_url_event_details    = 'event_details.json';
 my $_url_event_names      = 'event_names.json';
+
+my $_url_continents       = 'continents.json';
+my $_url_maps             = 'maps.json';
+my $_url_map_floor        = 'map_floor.json';
 my $_url_map_names        = 'map_names.json';
+
 my $_url_world_names      = 'world_names.json';
 
 my $_url_matches          = 'wvw/matches.json';
@@ -45,6 +51,8 @@ my $_url_recipe_details   = 'recipe_details.json';
 my $_url_guild_details    = 'guild_details.json';
 
 my $_url_colors           = 'colors.json';
+
+my $_url_files            = 'files.json';
 
 
 # Supported languages
@@ -366,10 +374,8 @@ sub get_item {
 
   my $json = $self->_api_request($_url_item_details, { lang => $lang, item_id => $item_id } );
 
-  my $t = $json->{type};
-
   # Convert CamelCase type value to lower_case subobject name
-  (my $tx = $t) =~ s/([a-z])([A-Z])/${1}_$2/g;
+  (my $tx = $json->{type}) =~ s/([a-z])([A-Z])/${1}_$2/g;
   $tx = lc($tx);
 
   # Standardize name of type-specific subobject
@@ -382,7 +388,7 @@ sub get_item {
     $item = with_traits(
       'GuildWars2::API::Objects::Item',
       (
-        "GuildWars2::API::Objects::Item::$t",
+        "GuildWars2::API::Objects::Item::" . $json->{type},
       ),
     )->new( $json );
   } else {
@@ -465,6 +471,42 @@ sub get_guild {
   return $guild_obj;
 }
 
+
+sub get_maps {
+  my ($self, $continent_id, $floor_id, $lang) = @_;
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  if (! defined $continent_id) {
+    $continent_id = 1;
+  }
+
+  if (! defined $floor_id) {
+    $floor_id = 2;
+  }
+
+  my $json = $self->_api_request($_url_map_floor, { "continent_id" => $continent_id, "floor" => $floor_id, "lang" => $lang });
+
+  my %map_tree;
+
+  foreach my $region_id (keys %{$json->{regions}}) {
+   $map_tree{$region_id} = GuildWars2::API::Objects::Region->new( $json->{regions}->{$region_id} );
+  }
+
+  return %map_tree;
+}
+
+
+###
+# Experimental stuff past here
+###
+
+
+
 sub get_icon_url {
   my ($self, $_obj, $_format) = @_;
 
@@ -474,7 +516,7 @@ sub get_icon_url {
   Carp::croak("Unrecognized icon format [$_format]; valid formats are jpg and png.")
     if ($_format ne "png" && $_format ne "jpg");
 
-  return $_base_render_url . $_obj->{icon_signature} . '/' . $_obj->{file_id} . '.' . $_format;
+  return $_base_render_url . '/' . $_obj->{icon_signature} . '/' . $_obj->{file_id} . '.' . $_format;
 }
 
 sub get_icon {
@@ -527,8 +569,7 @@ GuildWars2::API - An interface library for the Guild Wars 2 API
 =head1 DESCRIPTION
 
 GuildWars2::API is a class module that provides a set of standard interfaces to
-the L<Guild Wars 2 API|https://forum-en.guildwars2.com/forum/community/api/API-
-Documentation>.
+the L<Guild Wars 2 API|http://wiki.guildwars2.com/wiki/API:Main>.
 
 =head1 Constructor
 
@@ -623,6 +664,8 @@ from the API.
 
 HTTP interface. Used for interacting with the API.
 
+=back
+
 =head1 Methods
 
 =over
@@ -652,7 +695,7 @@ override the current default language.
 
 Returns a string containing the current state of a specific event on a specific
 world. Event state will be one of the following values (definitions are from
-L<the official API documentation|https://forum-en.guildwars2.com/forum/community/api/API-Documentation/>):
+L<the official API documentation|http://wiki.guildwars2.com/wiki/API:1/events>):
 
  State        Meaning
  ------------ ---------------------------------------------------------
@@ -739,8 +782,6 @@ Returns an array containing all "discovered" item IDs.
 Retrieves data for the given item_id (in the given language or the current
 default) and returns a GuildWars2::API::Objects::Item object.
 
-=back
-
 =item $api->list_recipes
 
 Returns an array containing all "discovered" recipe IDs.
@@ -763,6 +804,12 @@ in the game. Each hash element is a GuildWars2::API::Objects::Color object.
 Retrieves data for the given guild ID or guild name and returns a
 GuildWars2::API::Objects::Guild object. If the argument doesn't match the
 pattern of a guild ID, it is assumed to be a guild name.
+
+=item $api->get_maps
+=item $api->get_maps( $continent_id, $floor_id, $lang )
+
+Retreives a hash, keyed on region_id, containing map information on the world
+of Tyria. Each has element is a GuildWars2::API::Objects::Region object.
 
 =back
 

@@ -50,15 +50,14 @@ supported.
        2   item
        3   text
        4   map
-       6   skill
+       7   skill
        8   trait
-       9   recipe
+      10   recipe
 
 =item decode( $game_link )
 
 Decodes a game link and returns an array containing the type and ID. If the type
 is 2 (item), a third element is returned containing the item's quantity.
-
 
 =back
 
@@ -74,5 +73,3 @@ This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
 
 =cut
-
-__END__

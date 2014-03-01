@@ -23,7 +23,7 @@ with 'GuildWars2::API::Objects::Linkable';
 
 =pod
 
-=head1 Classes
+=head1 CLASSES
 
 =head2 Item
 

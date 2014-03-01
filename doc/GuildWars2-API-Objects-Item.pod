@@ -1,0 +1,410 @@
+=pod
+
+=head1 DESCRIPTION
+
+This subclass of GuildWars2::API::Objects defines the different item objects.
+
+
+=head1 CLASSES
+
+=head2 Item
+
+The Item class is the base for all types of items. It includes the Linkable role
+for generating game links, defined in Linkable.pm.
+
+For some types, additional roles are included into this base class which define
+additional attributes.
+
+=head3 Attributes
+
+=over
+
+=item item_id
+
+The internal ID of the item.
+
+=item item_type
+
+The item's type. This determines the specific class of object that this module
+builds. Possible values:
+
+ Armor
+ Back
+ Bag
+ Consumable
+ Container
+ CraftingMaterial
+ Gathering
+ Gizmo
+ MiniPet
+ Tool
+ Trinket
+ Trophy
+ UpgradeComponent
+ Weapon
+
+=item item_name
+
+The item's name.
+
+=item description
+
+The item's description.
+
+=item level
+
+The required character level to use the item. I<UpgradeComponent type only>: The
+required item level for attaching this upgrade.
+
+=item rarity
+
+The item's rarity. Possible values:
+
+ Junk
+ Basic
+ Fine
+ Masterwork
+ Rare
+ Exotic
+ Ascended
+ Legendary
+
+=item vendor_value
+
+The amount of coin received for selling the item to a vendor.
+
+=item game_type_flags
+
+A hash of boolean flags identifying the game types where the item can be
+used. Keys:
+
+ Activity
+ Dungeon
+ Pve
+ Pvp
+ PvpLobby
+ Wvw
+
+=item item_flags
+
+A hash of boolean flags identifying how the item behaves. Keys and descriptions:
+
+ Flag               Meaning
+ -----------------  ------------------------------------------------------------
+ AccountBound       Item is account bound, meaning it cannot be listed on the
+                      Trading Post or attached to a mail message.
+ HideSuffix         Item's name does not change to reflect the attached upgrade.
+ NoMysticForge      Item cannot be placed in the Mystic Forge.
+ NoSalvage          Item cannot be salvaged.
+ NoSell             Item cannot be sold to vendors.
+ NotUpgradeable     Item does not have an upgrade slot.
+ NoUnderwater       Item cannot be used in underwater mode.
+ SoulbindOnAcquire  Item is soulbound to the character who acquired it, i.e. it
+                      can only be equipped by that character (account bound
+                      restrictions also apply).
+ SoulBindOnUse      Item becomes soulbound when it is equipped.
+ Unique             Only 1 copy of this item can be equipped on a character at
+                      a time.
+
+=back
+
+
+=head2 Item::Infixed
+
+The Item::Infixed role defines the common features of "infixed" item types:
+anything that is Equippable, as well as the UpgradeComponent type.
+
+=head3 Attributes
+
+=over
+
+=item item_attributes
+
+The character attributes that the item modifies, given as a hash with the
+attribute names as the keys and the bonus amount as the values.
+
+=item buff_skill_id
+
+The internal ID of the buff effect that is placed on the character when the
+item is equipped.
+
+=item buff_desc
+
+The description of the buff effect.
+
+=back
+
+
+=head2 Item::Equippable
+
+The Item::Equippable role defines the common features of equippable item types:
+Armor, Back, Trinket, and Weapon. It includes the Item::Infixed role.
+
+=head3 Attributes
+
+=over
+
+=item infusion_slot
+
+The type of infusion slot on the item, if it has one.
+
+=item suffix_item_id
+
+The internal ID of the upgrade component attached to the item.
+
+=back
+
+
+=head1 ROLES
+
+=head2 Item::Armor
+
+The Item::Armor role adds attributes specific to armor items. It includes the
+Item::Equippable role.
+
+=head3 Attributes
+
+=over
+
+=item armor_type
+
+The item's armor subtype.
+
+ Boots
+ Coat
+ Gloves
+ Helm
+ HelmAquatic
+ Leggings
+ Shoulders
+
+=item armor_class
+
+The weight class of the armor.
+
+ Clothing
+ Heavy
+ Light
+ Medium
+
+=item defense
+
+The defense value of the armor.
+
+=item race
+
+The race that can equip the armor. Only applies to L<cultural
+armor|http://wiki.guildwars2.com/wiki/Cultural_armor>.
+
+=back
+
+
+=head2 Item::Back
+
+The Item::Back role adds attributes specific to back items. It includes the
+Item::Equippable role, but does not add any attributes directly.
+
+
+=head2 Item::Bag
+
+The Item::Bag role adds attributes specific to bag items.
+
+=head3 Attributes
+
+=over
+
+=item bag_size
+
+The number of slots in the bag.
+
+=item invisible
+
+Boolean indicating whether the bag is "invisible," i.e. items in it do not
+appear in vendor lists or the Trading Post and do not move when inventory is
+sorted.
+
+=back
+
+
+=head2 Item::Consumable
+
+The Item::Consumable role adds attributes specific to consumable items.
+
+=head3 Attributes
+
+=over
+
+=item consumable_type
+
+The item's consumable subtype.
+
+ AppearanceChange
+ Booze
+ ContractNpc
+ Food
+ Generic
+ Halloween
+ Immediate
+ Transmutation
+ Unlock
+ Utility
+
+=item food_duration_ms
+
+For Food subtypes, the duration in milliseconds of the food's Nourishment effect.
+
+=item food_description
+
+For Food subtypes, the description of the food's Nourishment effect.
+
+=item unlock_type
+
+For Unlock subtypes, the item's Unlock sub-subtype.
+
+ BagSlot
+ BankTab
+ CraftingRecipe
+ Dye
+ Unknown
+
+=item unlock_color_id
+
+For Dye-type unlocks, the internal ID of the color unlocked by the item. This
+can be used to look up the color data in the output of the $api->get_colors
+method.
+
+=item unlock_recipe_id
+
+For CraftingRecipe-type unlocks, the internal ID of the recipe unlocked by the
+item. This can be used to look up the recipe data with $api-
+>get_recipe($recipe_id).
+
+=back
+
+
+=head2 Item::Tool
+
+The Item::Tool role adds attributes specific to tool items.
+
+=head3 Attributes
+
+=over
+
+=item tool_type
+
+The item's tool subtype.
+
+ Salvage
+
+=back
+
+
+=head2 Item::Trinket
+
+The Item::Trinket role adds attributes specific to trinket items. It includes
+the Item::Equippable role.
+
+=head3 Attributes
+
+=over
+
+=item trinket_type
+
+The item's trinket subtype.
+
+ Accessory
+ Amulet
+ Ring
+
+=back
+
+
+=head2 Item::UpgradeComponent
+
+The Item::UpgradeComponent role adds attributes specific to upgrade
+components. It includes the Item::Infixed role.
+
+=head3 Attributes
+
+=over
+
+=item upgrade_type
+
+The item's updgrade component subtype.
+
+=item suffix
+
+The suffix that the upgrade confers when it is attached to an item.
+
+=item infusion_type
+
+The upgrade's infusion type.
+
+=item rune_bonuses
+
+For upgrade_type = Rune, the list of bonuses the rune confers, given as an
+array.
+
+=item applies_to
+
+The type of equipment the upgrade can be applied to.
+
+ All
+ Armor
+ Trinket
+ Weapon
+
+=back
+
+
+=head2 Item::Weapon
+
+The Item::Weapon role adds attributes specific to weapon items. It includes
+the Item::Equippable role.
+
+=head3 Attributes
+
+=over
+
+=item weapon_type
+
+The item's weapon subtype.
+
+ Axe
+ Dagger
+ Focus
+ Greatsword
+ Hammer
+ Harpoon
+ LongBow
+ Mace
+ Pistol
+ Rifle
+ Scepter
+ Shield
+ ShortBow
+ Speargun
+ Staff
+ Sword
+ Torch
+ Toy
+ Trident
+ TwoHandedToy
+ Warhorn
+
+=item damage_type
+
+The weapon's (cosmetic) damage type.
+
+=item min_strength
+=item max_strength
+
+The weapon's minimum and maximum strength ratings.
+
+=item defense
+
+The weapon's defense value. Only for weapon_type = 'shield'.
+
+=back
+
+=cut

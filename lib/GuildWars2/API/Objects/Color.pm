@@ -24,7 +24,7 @@ use Moose::Util::TypeConstraints;
 =head2 Color
 
 The Color object represents a color definition in Guild Wars 2. It is returned
-by the $api- >get_colors() method.
+by the C<$api->get_colors()> method.
 
 =head3 Attributes
 
