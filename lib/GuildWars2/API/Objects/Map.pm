@@ -189,6 +189,8 @@ package GuildWars2::API::Objects::PoI;
 use Moose;
 use Moose::Util::TypeConstraints;
 
+use GuildWars2::API::Constants;
+
 with 'GuildWars2::API::Objects::Linkable';
 
 =pod

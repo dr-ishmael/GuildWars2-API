@@ -11,7 +11,7 @@ my $api = GuildWars2::API->new;
 
 open(OREGS, ">map_regions.csv") or die "unable to open file: $!\n";
 open(OMAPS, ">map_maps.csv") or die "unable to open file: $!\n";
-open(OPNTS, ">map_points.csv") or die "unable to open file: $!\n";
+open(OPNTS, ">map_landmarks.csv") or die "unable to open file: $!\n";
 open(OTASK, ">map_tasks.csv") or die "unable to open file: $!\n";
 open(OSKIL, ">map_skills.csv") or die "unable to open file: $!\n";
 open(OSECT, ">map_sectors.csv") or die "unable to open file: $!\n";
