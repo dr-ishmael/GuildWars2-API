@@ -98,8 +98,6 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
     (my $buff_desc      = $item->buff_desc || "") =~ s/\n/<br>/g;
 
     say OARMOR "$item_id|$armor_type|$armor_class|$defense|$race|$infusion_slot|$suffix_item_id|$buff_skill_id|$buff_desc";
-
-    print_attributes($item);
   }
 
   #
@@ -112,8 +110,6 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
     (my $buff_desc      = $item->buff_desc || "") =~ s/\n/<br>/g;
 
     say OBACKX "$item_id|$infusion_slot|$suffix_item_id|$buff_skill_id|$buff_desc";
-
-    print_attributes($item);
   }
 
   #
@@ -162,7 +158,6 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
 
     say OTRNKT "$item_id|$trinket_type|$infusion_slot|$suffix_item_id|$buff_skill_id|$buff_desc";
 
-    print_attributes($item);
   }
 
   #
@@ -178,10 +173,10 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
 
     say OUPGRD "$item_id|$upgrade_type|$applies_to|$suffix|$infusion_type|$buff_skill_id|$buff_desc";
 
-    print_attributes($item);
-
-    my $rune_bonuses    = $item->rune_bonuses;
-    if (defined($rune_bonuses)) {
+    # Rune subtype data
+    if ($item->can('rune_bonuses')) {
+      my $rune_bonuses = $item->rune_bonuses;
+      s/\n/<br>/g for @$rune_bonuses;
       say ORNBNS "$item_id|" . join('|', @$rune_bonuses);
     }
   }
@@ -190,7 +185,6 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
   # Weapon type data
   #
   if ($item_type eq "Weapon") {
-
     my $weapon_type     = $item->weapon_type;
     my $damage_type     = $item->damage_type;
     my $min_strength    = $item->min_strength || "";
@@ -202,8 +196,17 @@ foreach my $item_id (sort { $a <=> $b } $api->list_items()) {
     (my $buff_desc      = $item->buff_desc || "") =~ s/\n/<br>/g;
 
     say OWEAPN "$item_id|$weapon_type|$damage_type|$min_strength|$max_strength|$defense|$infusion_slot|$suffix_item_id|$buff_skill_id|$buff_desc";
+  }
 
-    print_attributes($item);
+  #
+  # Attributes
+  #
+  if($item->can('item_attributes')) {
+    my $item_attributes = $item->item_attributes;
+    foreach my $a (keys %$item_attributes) {
+      my $m = $item_attributes->{$a};
+      say OATTRB "$item_id|$a|$m";
+    }
   }
 
   say ($i-1) if ($i++ % 1000) == 0;
@@ -226,18 +229,3 @@ close(OATTRB);
 close(ORNBNS);
 
 exit;
-
-
-sub print_attributes {
-  my ($item) = @_;
-
-  if(defined($item->item_attributes)) {
-    my $item_id         = $item->item_id;
-    my $item_attributes = $item->item_attributes;
-
-    foreach my $a (keys %$item_attributes) {
-      my $m = $item_attributes->{$a};
-      say OATTRB "$item_id|$a|$m";
-    }
-  }
-}

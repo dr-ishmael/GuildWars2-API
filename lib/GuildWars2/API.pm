@@ -6,6 +6,7 @@ BEGIN {
 }
 use Carp ();
 use CHI;
+use Digest::MD5 qw(md5_hex);
 use GuildWars2::API::Objects;
 use JSON::PP;
 use List::Util qw/max min/;
@@ -75,11 +76,62 @@ has 'json'            => ( is => 'ro', isa => 'JSON::PP', default => sub{ JSON::
 has 'ua'              => ( is => 'ro', isa => 'LWP::UserAgent', default => sub{ LWP::UserAgent->new } );
 has 'cache'           => ( is => 'ro', isa => 'Maybe[CHI::Driver::File]', lazy => 1, builder => '_init_cache' );
 has '_status'         => ( is => 'ro', isa => 'Bool', default => 1, writer => '_set_status', reader => 'is_success' );
+has '_prefix_map'      => ( is => 'ro', isa => 'HashRef', builder => '_build_prefix_map' );
 
 
 ####################
 # Init methods
 ####################
+
+sub _build_prefix_map {
+  return {
+    "power" => "mighty",
+    "precision" => "precise",
+    "toughness" => "resilient",
+    "vitality" => "vital",
+    "conditiondamage" => "malign",
+    "conditionduration" => "giver_1w",
+    "healing" => "healing",
+    "boonduration" => "winter_suf",
+    "power,precision" => "strong",
+    "power,vitality" => "vigorous",
+    "power,critdamage" => "honed",
+    "power,conditiondamage" => "potent",
+    "precision,power" => "hunter",
+    "precision,critdamage" => "penetrating",
+    "toughness,precision" => "stout",
+    "toughness,conditiondamage" => "enduring",
+    "toughness,healing" => "giver_2a",
+    "vitality,toughness" => "hearty",
+    "conditiondamage,precision" => "ravaging",
+    "conditiondamage,vitality" => "lingering",
+    "conditionduration,vitality" => "giver_2w",
+    "healing,power" => "rejuvenating",
+    "healing,vitality" => "mending",
+    "power,precision,critdamage" => "berserker",
+    "power,healing,precision" => "zealot",
+    "power,toughness,vitality" => "soldier",
+    "power,vitality,critdamage" => "valkyrie",
+    "precision,power,toughness" => "knight_suf",
+    "precision,power,critdamage" => "assassin",
+    "precision,conditiondamage,power" => "rampager",
+    "toughness,power,precision" => "knight",
+    "toughness,power,critdamage" => "cavalier",
+    "toughness,conditiondamage,healing" => "settler",
+    "toughness,boonduration,healing" => "giver_3a",
+    "vitality,power,toughness" => "sentinel",
+    "vitality,power,healing" => "shaman_suf",
+    "vitality,conditiondamage,healing" => "shaman",
+    "conditiondamage,power,vitality" => "carrion",
+    "conditiondamage,precision,toughness" => "rabid",
+    "conditiondamage,toughness,vitality" => "dire",
+    "conditionduration,precision,vitality" => "giver_3w",
+    "healing,power,toughness" => "cleric",
+    "healing,precision,vitality" => "magi",
+    "healing,conditiondamage,toughness" => "apothecary",
+    "conditiondamage,healing,power,precision,toughness,vitality,critdamage" => "celestial",
+  };
+}
 
 sub _init_cache {
   my $self = shift;
@@ -171,7 +223,7 @@ sub _api_request {
     $self->_set_status(1);
   }
 
-  return $decoded;
+  return ($response, $decoded);
 }
 
 
@@ -182,7 +234,7 @@ sub _api_request {
 sub build {
  my ($self) = @_;
 
-  my $json = $self->_api_request($_url_build);
+  my ($raw, $json) = $self->_api_request($_url_build);
 
   return $json->{build_id};
 }
@@ -196,7 +248,7 @@ sub _generic_names {
     $lang = $self->{language};
   }
 
-  my $json = $self->_api_request($interface, { lang => $lang } );
+  my ($raw, $json) = $self->_api_request($interface, { lang => $lang } );
 
   return undef if !$self->is_success();
 
@@ -251,7 +303,7 @@ sub event_state {
   Carp::croak("Given world ID [$world_id] is not a positive integer")
     unless $world_id =~ /^\d+$/;
 
-  my $json = $self->_api_request($_url_events, { event_id => $event_id, world_id => $world_id }, $self->event_cache_age );
+  my ($raw, $json) = $self->_api_request($_url_events, { event_id => $event_id, world_id => $world_id }, $self->event_cache_age );
 
   Carp::croak("No results for event ID [$event_id] and world ID [$world_id]")
     unless @{$json->{events}} > 0;
@@ -270,7 +322,7 @@ sub event_state_by_world {
   Carp::croak("Given event ID [$event_id] does not match event ID pattern")
     unless $event_id =~ /^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$/i;
 
-  my $json = $self->_api_request($_url_events, { event_id => $event_id }, $self->event_cache_age );
+  my ($raw, $json) = $self->_api_request($_url_events, { event_id => $event_id }, $self->event_cache_age );
 
   Carp::croak("No results for event ID [$event_id]")
     unless @{$json->{events}} > 0;
@@ -304,7 +356,7 @@ sub event_states_in_map {
   Carp::croak("Given world ID [$world_id] is not a positive integer")
     unless $world_id =~ /^\d+$/;
 
-  my $json = $self->_api_request($_url_events, { map_id  => $map_id, world_id => $world_id }, $self->event_cache_age );
+  my ($raw, $json) = $self->_api_request($_url_events, { map_id  => $map_id, world_id => $world_id }, $self->event_cache_age );
 
   Carp::croak("No results for map ID [$map_id] and world ID [$world_id]")
     unless @{$json->{events}} > 0;
@@ -325,7 +377,7 @@ sub event_states_in_map {
 sub wvw_matches {
   my ($self) = @_;
 
-  my $json = $self->_api_request($_url_matches);
+  my ($raw, $json) = $self->_api_request($_url_matches);
 
   return @{$json->{wvw_matches}};
 }
@@ -341,7 +393,7 @@ sub wvw_match_details {
   Carp::croak("Given match ID [$match_id] is invalid")
     unless $match_id =~ /^[12]-[1-9]$/i;
 
-  my $json = $self->_api_request($_url_match_details, { match_id => $match_id }, "5 minutes" );
+  my ($raw, $json) = $self->_api_request($_url_match_details, { match_id => $match_id }, "5 minutes" );
 
   return %$json;
 }
@@ -350,7 +402,7 @@ sub wvw_match_details {
 sub list_items {
   my ($self) = @_;
 
-  my $json = $self->_api_request($_url_items);
+  my ($raw, $json) = $self->_api_request($_url_items, {}, "1 second");
 
   return @{$json->{items}};
 }
@@ -372,7 +424,7 @@ sub get_item {
     $lang = $self->{language};
   }
 
-  my $json = $self->_api_request($_url_item_details, { lang => $lang, item_id => $item_id } );
+  my ($raw, $json) = $self->_api_request($_url_item_details, { lang => $lang, item_id => $item_id } );
 
   # Convert CamelCase type value to lower_case subobject name
   (my $tx = $json->{type}) =~ s/([a-z])([A-Z])/${1}_$2/g;
@@ -381,20 +433,11 @@ sub get_item {
   # Standardize name of type-specific subobject
   if (my $a = delete $json->{$tx}) { $json->{type_data} = $a; }
 
-  my $item;
-  # Instantiate the class with special roles for certain types
-  my @special_types = qw/ armor back bag consumable tool trinket upgrade_component weapon /;
-  if ($tx ~~ @special_types) {
-    $item = with_traits(
-      'GuildWars2::API::Objects::Item',
-      (
-        "GuildWars2::API::Objects::Item::" . $json->{type},
-      ),
-    )->new( $json );
-  } else {
-    # If it's not a special type, instantiate as a plain item
-    $item = GuildWars2::API::Objects::Item->new($json);
-  }
+  my $item = GuildWars2::API::Objects::Item->new($json);
+
+  # Store the original raw JSON response
+  $item->_set_json($raw);
+  $item->_set_md5(md5_hex($raw));
 
   return $item;
 }
@@ -403,7 +446,7 @@ sub get_item {
 sub list_recipes {
   my ($self) = @_;
 
-  my $json = $self->_api_request($_url_recipes);
+  my ($raw, $json) = $self->_api_request($_url_recipes, {}, "1 second");
 
   return @{$json->{recipes}};
 }
@@ -419,7 +462,7 @@ sub get_recipe {
   Carp::croak("Given recipe ID [$recipe_id] is not a positive integer")
     unless $recipe_id =~ /^\d+$/;
 
-  my $json = $self->_api_request($_url_recipe_details, { recipe_id => $recipe_id } );
+  my ($raw, $json) = $self->_api_request($_url_recipe_details, { recipe_id => $recipe_id } );
 
   my $recipe = GuildWars2::API::Objects::Recipe->new( $json );
 
@@ -436,7 +479,7 @@ sub get_colors {
     $lang = $self->{language};
   }
 
-  my $json = $self->_api_request($_url_colors, { lang => $lang } );
+  my ($raw, $json) = $self->_api_request($_url_colors, { lang => $lang } );
 
   my %color_objs;
   foreach my $color_id (keys %{$json->{colors}}) {
@@ -462,7 +505,7 @@ sub get_guild {
     $id_or_name = "guild_name";
   }
 
-  my $json = $self->_api_request($_url_guild_details, { $id_or_name => $guild_id });
+  my ($raw, $json) = $self->_api_request($_url_guild_details, { $id_or_name => $guild_id });
 
   return undef if !$self->is_success();
 
@@ -489,7 +532,7 @@ sub get_maps {
     $floor_id = 2;
   }
 
-  my $json = $self->_api_request($_url_map_floor, { "continent_id" => $continent_id, "floor" => $floor_id, "lang" => $lang });
+  my ($raw, $json) = $self->_api_request($_url_map_floor, { "continent_id" => $continent_id, "floor" => $floor_id, "lang" => $lang });
 
   my %map_tree;
 
@@ -500,6 +543,10 @@ sub get_maps {
   return %map_tree;
 }
 
+sub prefix_lookup {
+  my ($self, $item) = @_;
+  return $item->_prefix_lookup($self->_prefix_map);
+}
 
 ###
 # Experimental stuff past here

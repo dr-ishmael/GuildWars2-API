@@ -363,8 +363,10 @@ sub process_item {
 
     say OUPGRD "$item_id|$upgrade_type|$applies_to|$suffix|$infusion_type|$buff_skill_id|$buff_desc";
 
-    my $rune_bonuses    = $item->rune_bonuses;
-    if (defined($rune_bonuses)) {
+    # Rune subtype data
+    if ($item->can('rune_bonuses')) {
+      my $rune_bonuses = $item->rune_bonuses;
+      s/\n/<br>/g for @$rune_bonuses;
       say ORNBNS "$item_id|" . join('|', @$rune_bonuses);
     }
   }
