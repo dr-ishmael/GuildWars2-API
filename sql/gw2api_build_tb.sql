@@ -18,22 +18,28 @@ USE `gw2api`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `item_index_tb`
+-- Table structure for table `build_tb`
 --
 
-DROP TABLE IF EXISTS `item_index_tb`;
+DROP TABLE IF EXISTS `build_tb`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `item_index_tb` (
-  `item_id` mediumint(8) unsigned NOT NULL,
-  `item_json` text NOT NULL,
-  `item_md5` char(32) NOT NULL,
-  `first_seen_build_id` mediumint(8) NOT NULL,
-  `last_seen_build_id` mediumint(8) NOT NULL,
-  `last_updt_build_id` mediumint(8) NOT NULL,
-  PRIMARY KEY (`item_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+CREATE TABLE `build_tb` (
+  `build_id` mediumint(8) unsigned NOT NULL,
+  `build_dt` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`build_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `build_tb`
+--
+
+LOCK TABLES `build_tb` WRITE;
+/*!40000 ALTER TABLE `build_tb` DISABLE KEYS */;
+INSERT INTO `build_tb` VALUES (31574,'2014-03-29 15:54:33');
+/*!40000 ALTER TABLE `build_tb` ENABLE KEYS */;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -44,4 +50,4 @@ CREATE TABLE `item_index_tb` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-03-29 15:58:19
+-- Dump completed on 2014-03-29 15:59:29

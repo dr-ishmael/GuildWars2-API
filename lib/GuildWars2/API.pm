@@ -7,14 +7,17 @@ BEGIN {
 use Carp ();
 use CHI;
 use Digest::MD5 qw(md5_hex);
-use GuildWars2::API::Objects;
+use File::Find;
 use JSON::PP;
 use List::Util qw/max min/;
 use LWP::UserAgent;
+use Time::Duration::Parse;
 
 use Moose;
 use Moose::Util qw( with_traits );
 use Moose::Util::TypeConstraints;
+
+use GuildWars2::API::Objects;
 
 ####################
 # Local constants
@@ -69,9 +72,10 @@ has 'retries'         => ( is => 'rw', isa => 'Int', default => 3 );
 has 'language'        => ( is => 'rw', isa => 'Lang', default => 'en' );
 has 'nocache'         => ( is => 'ro', isa => 'Bool', default => undef );
 has 'cache_dir'       => ( is => 'ro', isa => 'Str', default => './gw2api-cache' );
-has 'cache_age'       => ( is => 'rw', isa => 'Str', default => '7 days' );
+has 'cache_age'       => ( is => 'rw', isa => 'Str', default => '1 day' );
 has 'event_cache_age' => ( is => 'rw', isa => 'Str', default => '30 seconds' );
-has 'wvw_cache_age'   => ( is => 'rw', isa => 'Str', default => '5 minutes' );
+has 'item_cache_age'  => ( is => 'rw', isa => 'Str', default => '14 days' );
+has 'wvw_cache_age'   => ( is => 'rw', isa => 'Str', default => '5 seconds' );
 has 'json'            => ( is => 'ro', isa => 'JSON::PP', default => sub{ JSON::PP->new } );
 has 'ua'              => ( is => 'ro', isa => 'LWP::UserAgent', default => sub{ LWP::UserAgent->new } );
 has 'cache'           => ( is => 'ro', isa => 'Maybe[CHI::Driver::File]', lazy => 1, builder => '_init_cache' );
@@ -156,6 +160,19 @@ sub _init_cache {
   return undef;
 }
 
+sub _retry(&;$) {
+    my $sub_ref = shift;
+    my $max     = shift || 3;
+
+  ATTEMPT:
+    for my $try (1..$max) {
+        eval { $sub_ref->(); };
+        last unless $@;
+        warn "Failed $try, retrying.  Error: $@\n";
+        sleep(5);
+    }
+    if ($@) { die "failed after $max tries: $@\n" }
+}
 
 ####################
 # Core methods
@@ -204,8 +221,10 @@ sub _api_request {
     $response = $response->decoded_content();
 
     # Set the CHI cache for this $url for efficient future access
-    $cache_age = $self->{cache_age} unless defined $cache_age;
-    $self->cache->set($url, $response, $cache_age) unless defined $self->{nocache};
+    unless (defined $self->{nocache}) {
+      $cache_age = $self->{cache_age} unless defined $cache_age;
+      _retry { $self->cache->set($url, $response, $cache_age); };
+    }
   }
 
   my $decoded;
@@ -228,11 +247,34 @@ sub _api_request {
 
 
 ####################
+# Utility methods
+####################
+
+sub clean_item_cache {
+  my ($self) = @_;
+
+  my $now = time();
+  my $AGE = parse_duration($self->{item_cache_age});
+  my $wanted = sub { unlink $_ if -f $_ && $_ =~ /(item|recipe)_details/ && $now - (stat $_)[9] > $AGE; };
+  find ( { no_chdir => 1, wanted => $wanted }, $self->{cache_dir} );
+}
+
+sub empty_item_cache {
+  my ($self) = @_;
+
+  my $now = time();
+  my $AGE = parse_duration($self->{item_cache_age});
+  my $wanted = sub { unlink $_ if -f $_ && $_ =~ /(item|recipe)_details/; };
+  find ( { no_chdir => 1, wanted => $wanted }, $self->{cache_dir} );
+}
+
+
+####################
 # API accessor methods
 ####################
 
 sub build {
- my ($self) = @_;
+  my ($self) = @_;
 
   my ($raw, $json) = $self->_api_request($_url_build);
 
@@ -660,19 +702,20 @@ when calling individual API methods.
 
 =item nocache [BOOL]
 
-I<Read-only>. Disable local caching of API responses. Defaults to undef. Using this in
-combination with any of the following cache options will cause an error.
+I<Read-only>. Disable local caching of API responses. Defaults to undef. Using
+this in combination with any of the following cache options will cause an error.
 
 =item cache_dir [STRING]
 
-I<Read-only>. The local directory to use as the cache location. Defaults to './gw2api-cache'
-and will attempt to create the directory if it does not exist.
+I<Read-only>. The local directory to use as the cache location. Can be given as
+a full path or relative to the script execution directory. Defaults to
+'./gw2api-cache' and will attempt to create the directory if it does not exist.
 
 =item cache_age [DURATION]
 
-Length of time after which the cached responses will expire. Defaults to '24
-hours'. Accepted values are strings consisting of an integer followed by a time
-unit, e.g. '1 day' or '10 seconds' etc.
+Length of time after which the cached responses will expire. Defaults to '1
+day'. Accepted values are strings consisting of an integer followed by a time
+unit, e.g. '2 hours' or '10 seconds' etc.
 
 This applies to I<most> of the APIs; the following *_cache_age parameters
 override this setting for specific APIs.
@@ -682,10 +725,16 @@ override this setting for specific APIs.
 Length of time after which the cached version of I<event state> responses will
 expire. Defaults to '30 seconds'.
 
+=item item_cache_age [DURATION]
+
+Length of time after which the cached version of I<item_details> and
+I<recipe_details> responses will expire. Defaults to '14 days' - the usual time
+between major releases.
+
 =item wvw_cache_age [DURATION]
 
 Length of time after which the cached version of I<WvW match detail> responses
-will expire. Defaults to '5 minutes'.
+will expire. Defaults to '5 seconds'.
 
 =back
 
@@ -714,6 +763,8 @@ HTTP interface. Used for interacting with the API.
 =back
 
 =head1 Methods
+
+=head2 API accessor methods
 
 =over
 
@@ -857,6 +908,22 @@ pattern of a guild ID, it is assumed to be a guild name.
 
 Retreives a hash, keyed on region_id, containing map information on the world
 of Tyria. Each has element is a GuildWars2::API::Objects::Region object.
+
+=back
+
+=head2 Utility methods
+
+=over
+
+=item $api->clean_item_cache
+
+Cleans up all cached versions of I<item_details> and I<recipe_details> responses
+that are older than C<item_cache_age>.
+
+=item $api->empty_item_cache
+
+Cleans up all cached versions of I<item_details> and I<recipe_details> responses
+regardless of age. Useful to run whenever the build number changes.
 
 =back
 

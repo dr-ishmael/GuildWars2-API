@@ -206,43 +206,57 @@ my @_default_gametypes = qw( Activity Dungeon Pve Pvp PvpLobby Wvw );
 
 my @_default_flags = qw( AccountBound HideSuffix NoMysticForge NoSalvage NoSell NotUpgradeable NoUnderwater SoulBindOnAcquire SoulBindOnUse Unique );
 
-enum 'ItemType', [qw(
-    Armor Back Bag Consumable Container CraftingMaterial Gathering Gizmo MiniPet
-    Tool Trinket Trophy UpgradeComponent Weapon
-  )];
+my %enum_map = (
+  'item_type' => [qw(
+      Armor Back Bag Consumable Container CraftingMaterial Gathering Gizmo MiniPet
+      Tool Trinket Trophy UpgradeComponent Weapon
+    )],
+  'item_subtype' => [
+      # Common
+      # Subtype is not used by (is null for): Back Bag CraftingMaterial MiniPet Trophy
+      # Default used by: Container Gizmo UpgradeComponent
+      qw(null Default Unknown),
+      # Armor
+      qw(Boots Coat Gloves Helm HelmAquatic Leggings Shoulders),
+      # Consumable
+      qw(AppearanceChange Booze ContractNpc Food Generic Halloween Immediate Transmutation Unlock UnTransmutation UpgradeRemoval Utility),
+      # Container
+      qw(GiftBox),
+      # Gathering
+      qw(Foraging Logging Mining),
+      # Gizmo
+      qw(RentableContractNpc UnlimitedConsumable),
+      # Tool
+      qw(Salvage),
+      # Trinket
+      qw(Accessory Amulet Ring),
+      # UpgradeComponent
+      qw(Gem Rune Sigil),
+      # Weapon
+      qw(Axe Dagger Focus Greatsword Hammer Harpoon LargeBundle LongBow Mace Pistol Rifle
+         Scepter Shield ShortBow Speargun Staff Sword Torch Toy Trident TwoHandedToy Warhorn)
+    ],
+  'rarity' => [qw( Junk Basic Fine Masterwork Rare Exotic Ascended Legendary )],
+  'armor_weight' => [qw( Clothing Light Medium Heavy )],
+  'armor_race' => [qw( Asura Charr Human Norn Sylvari )],
+  'damage_type' => [qw( Fire Ice Lightning Physical )],
+  'infusion_type' => [qw( Agony Defense Offense Omni Utility )],
+  'infusion_slot_type' => [qw( Defense Offense Utility )],
+  'unlock_type' => [qw( BagSlot BankTab CollectibleCapacity Content CraftingRecipe Dye )],
+  'upgrade_atype' => [qw( All Armor Trinket Weapon )],
+);
 
-enum 'ItemSubtype', [
-    # Common
-    qw(null Default),
-    # Armor
-    qw(Boots Coat Gloves Helm HelmAquatic Leggings Shoulders),
-    # Consumable
-    qw(AppearanceChange Booze ContractNpc Food Generic Halloween Immediate Transmutation Unknown Unlock Utility),
-    # Container
-    qw(GiftBox),
-    # Gathering
-    qw(Foraging Logging Mining),
-    # Gizmo
-    qw(RentableContractNpc UnlimitedConsumable),
-    # Tool
-    qw(Salvage),
-    # Trinket
-    qw(Accessory Amulet Ring),
-    # UpgradeComponent
-    qw(Gem Rune Sigil),
-    # Weapon
-    qw(Axe Dagger Focus Greatsword Hammer Harpoon LargeBundle LongBow Mace Pistol Rifle
-    Scepter Shield ShortBow Speargun Staff Sword Torch Toy Trident TwoHandedToy Warhorn)
-  ];
+enum 'ItemType',          $enum_map{'item_type'};
+enum 'ItemSubtype',       $enum_map{'item_subtype'};
+enum 'ItemRarity',        $enum_map{'rarity'};
+enum 'ArmorWeight',       $enum_map{'armor_weight'};
+enum 'ArmorRace',         $enum_map{'armor_race'};
+enum 'DamageType',        $enum_map{'damage_type'};
+enum 'InfusionType',      $enum_map{'infusion_type'};
+enum 'InfusionSlotType',  $enum_map{'infusion_slot_type'};
+enum 'UnlockType',        $enum_map{'unlock_type'};
+enum 'UpgradeAType',      $enum_map{'upgrade_atype'};
 
-enum 'ItemRarity', [qw( Junk Basic Fine Masterwork Rare Exotic Ascended Legendary )];
-
-enum 'ArmorClass', [qw( Clothing Light Medium Heavy )];
-enum 'ArmorRace', [qw( Asura Charr Human Norn Sylvari )];
-enum 'DamageType', [qw( Fire Ice Lightning Physical )];
-enum 'InfusionType', [qw( Defense Offense Omni Utility )];
-enum 'UnlockType', [qw( BagSlot BankTab CraftingRecipe Dye Unknown )];
-enum 'UpgradeAType', [qw( All Armor Trinket Weapon )];
 
 has 'item_id'           => ( is => 'ro', isa => 'Int',            required => 1 );
 has 'item_name'         => ( is => 'ro', isa => 'Str',            required => 1 );
@@ -259,9 +273,9 @@ has 'item_subtype'      => ( is => 'ro', isa => 'ItemSubtype'   );
 has 'item_attributes'   => ( is => 'ro', isa => 'HashRef[Int]'  );
 has 'buff_skill_id'     => ( is => 'ro', isa => 'Int'           );
 has 'buff_desc'         => ( is => 'ro', isa => 'Str'           );
-has 'infusion_slot'     => ( is => 'ro', isa => 'Str'           );
+has 'infusion_slots'    => ( is => 'ro', isa => 'ArrayRef[Str]' );
 has 'suffix_item_id'    => ( is => 'ro', isa => 'Str'           );
-has 'armor_class'       => ( is => 'ro', isa => 'ArmorClass'    );
+has 'armor_weight'      => ( is => 'ro', isa => 'ArmorWeight'   );
 has 'defense'           => ( is => 'ro', isa => 'Int'           );
 has 'armor_race'        => ( is => 'ro', isa => 'ArmorRace'     );
 has 'bag_size'          => ( is => 'ro', isa => 'Int'           );
@@ -272,7 +286,7 @@ has 'unlock_type'       => ( is => 'ro', isa => 'UnlockType'    );
 has 'unlock_color_id'   => ( is => 'ro', isa => 'Str'           );
 has 'unlock_recipe_id'  => ( is => 'ro', isa => 'Str'           );
 has 'charges'           => ( is => 'ro', isa => 'Int'           );
-has 'applies_to'        => ( is => 'ro', isa => 'UpgradeAType'  );
+has 'upgrade_type'      => ( is => 'ro', isa => 'UpgradeAType'  );
 has 'suffix'            => ( is => 'ro', isa => 'Str'           );
 has 'infusion_type'     => ( is => 'ro', isa => 'InfusionType'  );
 has 'rune_bonuses'      => ( is => 'ro', isa => 'ArrayRef[Str]' );
@@ -281,84 +295,118 @@ has 'min_strength'      => ( is => 'ro', isa => 'Int'           );
 has 'max_strength'      => ( is => 'ro', isa => 'Int'           );
 has 'raw_json'          => ( is => 'ro', isa => 'Str', writer => '_set_json' );
 has 'raw_md5'           => ( is => 'ro', isa => 'Str', writer => '_set_md5'  );
+has 'item_warnings'     => ( is => 'ro', isa => 'Str'           );
 
 around 'BUILDARGS', sub {
   my ($orig, $class, $args) = @_;
 
-  # Rename and strip/replace embedded newlines
+  local $" = ','; #" # <-- this is to satisfy syntax highlighting that can't interpret $" as a variable name
+
+  $args->{item_warnings} = "";
+
+  # Renames and simple transforms (strip/convert newlines, etc.)
   if(my $a = delete $args->{name}) { ($args->{item_name} = $a) =~ s/\n//g }
   if(my $a = delete $args->{type}) { $args->{item_type} = $a }
   if(my $a = delete $args->{description}) { ($args->{description} = $a) =~ s/\n/<br>/g }
-  if(my $a = delete $args->{type_data}->{type}) { $args->{item_subtype} = $a }
   if(my $a = delete $args->{icon_file_signature}) { $args->{icon_signature} = $a }
-  if(my $a = delete $args->{type_data}->{suffix_item_id}) { $args->{suffix_item_id} = $a }
-  if(my $a = delete $args->{type_data}->{weight_class}) { $args->{armor_class} = $a }
-  if(my $a = delete $args->{type_data}->{defense}) { $args->{defense} = $a }
-  if(my $a = delete $args->{type_data}->{size}) { $args->{bag_size} = $a }
-  if(my $a = delete $args->{type_data}->{duration_ms}) { $args->{food_duration_sec} = $a / 1000 }
-  if(my $a = delete $args->{type_data}->{description}) { ($args->{food_description} = $a) =~ s/\n/<br>/g }
-  if(my $a = delete $args->{type_data}->{unlock_type}) { $args->{unlock_type} = $a }
-  if(my $a = delete $args->{type_data}->{color_id}) { $args->{unlock_color_id} = $a }
-  if(my $a = delete $args->{type_data}->{recipe_id}) { $args->{unlock_recipe_id} = $a }
-  if(my $a = delete $args->{type_data}->{suffix}) { $args->{suffix} = $a }
-  if(my $a = delete $args->{type_data}->{no_sell_or_sort}) { $args->{invisible} = $a }
-  if(my $a = delete $args->{type_data}->{min_power}) { $args->{min_strength} = $a }
-  if(my $a = delete $args->{type_data}->{max_power}) { $args->{max_strength} = $a }
-  if(my $a = delete $args->{type_data}->{damage_type}) { $args->{damage_type} = $a }
 
-  if(my $a = delete $args->{type_data}->{bonuses}) {
-    s/\n/<br>/g for @$a;
-    $args->{rune_bonuses} = $a;
-  }
+  if (my $tdata = delete $args->{type_data}) {
+    if(my $a = delete $tdata->{type}) { $args->{item_subtype} = $a }
+    if(my $a = delete $tdata->{suffix_item_id}) { $args->{suffix_item_id} = $a }
+    if(my $a = delete $tdata->{weight_class}) { $args->{armor_weight} = $a }
+    if(my $a = delete $tdata->{defense}) { $args->{defense} = $a }
+    if(my $a = delete $tdata->{size}) { $args->{bag_size} = $a }
+    if(my $a = delete $tdata->{duration_ms}) { $args->{food_duration_sec} = $a / 1000 }
+    if(my $a = delete $tdata->{description}) { ($args->{food_description} = $a) =~ s/\n/<br>/g }
+    if(my $a = delete $tdata->{unlock_type}) { $args->{unlock_type} = $a }
+    if(my $a = delete $tdata->{color_id}) { $args->{unlock_color_id} = $a }
+    if(my $a = delete $tdata->{recipe_id}) { $args->{unlock_recipe_id} = $a }
+    if(my $a = delete $tdata->{suffix}) { $args->{suffix} = $a }
+    if(my $a = delete $tdata->{no_sell_or_sort}) { $args->{invisible} = $a }
+    if(my $a = delete $tdata->{min_power}) { $args->{min_strength} = $a }
+    if(my $a = delete $tdata->{max_power}) { $args->{max_strength} = $a }
+    if(my $a = delete $tdata->{damage_type}) { $args->{damage_type} = $a }
+    if(my $a = delete $tdata->{infusion_slots}) { $args->{infusion_slots} = $a }
+    if(my $a = delete $tdata->{infusion_upgrade_flags}) { $args->{infusion_upgrade_flags} = $a }
+    if(my $a = delete $tdata->{flags}) { $args->{upgrade_flags} = $a }
+    if(my $a = delete $tdata->{bonuses}) { s/\n/<br>/g for @$a; $args->{rune_bonuses} = $a; }
 
-  # Restrictions --  Armor only
-  if(my $r = delete $args->{restrictions}) {
-    # A single item (17012) has restrictions = [Guardian,Warrior]
-    # All others have a single race name as value
-    # This filters any item with more than 1 value
-    if (@$r == 1) {
-      $args->{armor_race} = $r->[0];
+    if (my $infix = delete $tdata->{infix_upgrade}) {
+      if(my $a = delete $infix->{buff}->{skill_id})    { $args->{buff_skill_id} = $a }
+      if(my $a = delete $infix->{buff}->{description}) { ($args->{buff_desc} = $a) =~ s/\n/<br>/g }
+      if(my $attributes = delete $infix->{attributes}) {
+        if (scalar @$attributes > 0) {
+          foreach my $a (@$attributes) {
+            $args->{item_attributes}->{$a->{attribute}} = $a->{modifier};
+          }
+        }
+      }
     }
   }
 
-  # Infusion slot -- equippable items (Armor/Trinket/Weapon) only
-  $args->{infusion_slot} = "";
-  if(my $i = delete $args->{type_data}->{infusion_slots}) {
-    # Cheat on the assumption that no item has more than 1 slot and no slot has more than 1 type
-    $args->{infusion_slot} = $i->[0]->{flags}->[0] || "";
+  # Validation of enumerated fields
+  _validate_enum($args, 'item_type');
+  _validate_enum($args, 'item_subtype');
+  _validate_enum($args, 'rarity');
+  _validate_enum($args, 'armor_weight');
+  _validate_enum($args, 'damage_type');
+  _validate_enum($args, 'unlock_type');
+
+  # Restrictions - returned as a list, only single value is meaningful
+  # A single item (17012) has restrictions = [Guardian,Warrior]
+  # Otherwise this element is only used to define racial armor restrictions
+  if(my $r = delete $args->{restrictions}) {
+    if (@$r == 1 && $r->[0] ~~ $enum_map{'armor_race'}) {
+      $args->{armor_race} = $r->[0];
+    } elsif (@$r > 0) {
+      $args->{item_warnings} .= "Unrecognized restrictions [@$r]\n";
+    }
   }
 
-  # infusion_upgrade_flags -- UpgradeComponent->Default (infusion) only
-  if(my $iuf = delete $args->{type_data}->{infusion_upgrade_flags}) {
-    if (scalar @$iuf > 0) {
-      $args->{infusion_type} = (@$iuf == 3) ? 'Omni' : $iuf->[0];
+  # Infusion slots - returned as a list of 'flag' lists
+  #   'flags' list has never been seen with more than 1 value
+  #   Agony type slots are returned as an empty 'flags' list, we assume all empty lists are Agony
+  if(my $i = delete $args->{infusion_slots}) {
+    $args->{infusion_slots} = []; # reinitialize to empty list
+    foreach my $s (@$i) {
+      my $f = $s->{flags};
+      if (@$f == 1 && $f->[0] ~~ $enum_map{'infusion_slot_type'}) {
+        push $args->{infusion_slots}, $f->[0];
+      } elsif (@$f == 0) {
+        push $args->{infusion_slots}, 'Agony';
+      } else {
+        $args->{item_warnings} .= "Unrecognized infusion_slot flags: [@$f]\n";
+      }
+    }
+  }
+
+  # Infusion upgrade flags - returned as a list, only single value is meaningful
+  # Omni infusions are returned as a list of ['Offense', 'Defense', 'Utility']
+  #   so we translate that to a single value
+  # Agony infusions have an empty list and are called '+<x> Agony Infusion'
+  if(my $iuf = delete $args->{infusion_upgrade_flags}) {
+    @$iuf = sort @$iuf;
+    if (@$iuf == 1 && $iuf->[0] ~~ $enum_map{'infusion_type'}) {
+      $args->{infusion_type} = $iuf->[0];
+    } elsif (@$iuf == 3 && @$iuf ~~ $enum_map{'infusion_type'}) {
+      $args->{infusion_type} = 'Omni';
+    } elsif (@$iuf == 0 && $args->{item_name} =~ /Agony Infusion/) {
+      $args->{infusion_type} = 'Agony';
+    } elsif (@$iuf > 0) {
+      $args->{item_warnings} .= "Unrecognized infusion_upgrade_flags [@$iuf]\n";
     }
   }
 
   # Attachment flags -- UpgradeComponent only
-  if(my $flags = delete $args->{type_data}->{flags}) {
+  if(my $uf = delete $args->{upgrade_flags}) {
     # Making assumptions about the only valid flag combinations
-    for (scalar @$flags) {
-      $args->{applies_to} = 'Trinket' when 1;
-      $args->{applies_to} = 'Armor'   when 3;
-      $args->{applies_to} = 'Weapon'  when 19;
-      $args->{applies_to} = 'All'     when 23;
+    for (scalar @$uf) {
+      $args->{upgrade_type} = 'Trinket' when 1;
+      $args->{upgrade_type} = 'Armor'   when 3;
+      $args->{upgrade_type} = 'Weapon'  when 19;
+      $args->{upgrade_type} = 'All'     when 23;
+      default { $args->{item_warnings} .= "Unrecognized upgrade flags [@$uf]\n"; }
     }
-  }
-
-  # infix_upgrade -- equippable items and UpgradeComponent only
-  if(my $infix = delete $args->{type_data}->{infix_upgrade}) {
-    if(my $a = delete $infix->{buff}->{skill_id})    { $args->{buff_skill_id} = $a }
-    if(my $a = delete $infix->{buff}->{description}) { ($args->{buff_desc} = $a) =~ s/\n/<br>/g }
-
-    if(my $attributes = delete $infix->{attributes}) {
-      if (scalar @$attributes > 0) {
-        foreach my $a (@$attributes) {
-          $args->{item_attributes}->{$a->{attribute}} = $a->{modifier};
-        }
-      }
-    }
-
   }
 
   # Transform from array[str] to hash[bool]
@@ -380,6 +428,18 @@ around 'BUILDARGS', sub {
 
   $class->$orig($args);
 };
+
+# Method to perform "soft" validations on enumerated fields
+# Invalid values will add a warning to $args->{moose_warnings} and blank the output field
+sub _validate_enum {
+  my ($args, $field) = @_;
+  my $a = $args->{$field};
+  return if !$a;
+  unless ($a~~ $enum_map{$field}) {
+    $args->{item_warnings} .= "Unrecognized $field: [$a].\n";
+    $args->{$field} = '';
+  }
+}
 
 # Method required to provide type and ID to Linkable role
 sub _gl_data {
@@ -486,7 +546,7 @@ Item::Equippable role.
 
 =over
 
-=item armor_class
+=item armor_weight
 
 The weight class of the armor.
 
