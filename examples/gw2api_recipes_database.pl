@@ -13,7 +13,7 @@ use Thread::Queue;
 use GuildWars2::API;
 use GuildWars2::API::Utils;
 
-my $VERBOSE = 1;
+my $VERBOSE = 0;
 
 ###
 # Set up API interface
