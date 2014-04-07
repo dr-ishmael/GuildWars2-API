@@ -1,4 +1,4 @@
-CREATE DATABASE  IF NOT EXISTS `gw2api` /*!40100 DEFAULT CHARACTER SET latin1 */;
+CREATE DATABASE  IF NOT EXISTS `gw2api` /*!40100 DEFAULT CHARACTER SET utf8 */;
 USE `gw2api`;
 -- MySQL dump 10.13  Distrib 5.6.13, for Win32 (x86)
 --
@@ -28,8 +28,7 @@ CREATE TABLE `item_rune_bonus_tb` (
   `item_id` mediumint(8) unsigned NOT NULL,
   `rune_bonus_tier` tinyint(3) unsigned NOT NULL,
   `rune_bonus_txt` varchar(256) NOT NULL,
-  PRIMARY KEY (`item_id`,`rune_bonus_tier`),
-  CONSTRAINT `item_rune_fk` FOREIGN KEY (`item_id`) REFERENCES `item_tb` (`item_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  PRIMARY KEY (`item_id`,`rune_bonus_tier`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -42,4 +41,4 @@ CREATE TABLE `item_rune_bonus_tb` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-03-29 15:58:20
+-- Dump completed on 2014-04-06 20:43:08

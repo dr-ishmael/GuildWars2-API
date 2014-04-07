@@ -1,4 +1,18 @@
-use Modern::Perl '2012';
+use Modern::Perl '2014';
+
+package CHI::Driver::File::GW2API;
+
+use Moo;
+
+extends 'CHI::Driver::File';
+
+sub generate_temporary_filename {
+    my ( $self, $dir, $file ) = @_;
+    return undef;
+}
+
+
+
 
 package GuildWars2::API;
 BEGIN {
@@ -18,6 +32,7 @@ use Moose::Util qw( with_traits );
 use Moose::Util::TypeConstraints;
 
 use GuildWars2::API::Objects;
+
 
 ####################
 # Local constants
@@ -100,9 +115,11 @@ sub _build_prefix_map {
     "power,precision" => "strong",
     "power,vitality" => "vigorous",
     "power,critdamage" => "honed",
+    "power,ferocity" => "honed",
     "power,conditiondamage" => "potent",
     "precision,power" => "hunter",
     "precision,critdamage" => "penetrating",
+    "precision,ferocity" => "penetrating",
     "toughness,precision" => "stout",
     "toughness,conditiondamage" => "enduring",
     "toughness,healing" => "giver_2a",
@@ -113,14 +130,18 @@ sub _build_prefix_map {
     "healing,power" => "rejuvenating",
     "healing,vitality" => "mending",
     "power,precision,critdamage" => "berserker",
+    "power,ferocity,precision" => "berserker",
     "power,healing,precision" => "zealot",
     "power,toughness,vitality" => "soldier",
     "power,vitality,critdamage" => "valkyrie",
+    "power,ferocity,vitality" => "valkyrie",
     "precision,power,toughness" => "knight_suf",
     "precision,power,critdamage" => "assassin",
+    "precision,ferocity,power" => "assassin",
     "precision,conditiondamage,power" => "rampager",
     "toughness,power,precision" => "knight",
     "toughness,power,critdamage" => "cavalier",
+    "toughness,ferocity,power" => "cavalier",
     "toughness,conditiondamage,healing" => "settler",
     "toughness,boonduration,healing" => "giver_3a",
     "vitality,power,toughness" => "sentinel",
@@ -134,6 +155,7 @@ sub _build_prefix_map {
     "healing,precision,vitality" => "magi",
     "healing,conditiondamage,toughness" => "apothecary",
     "conditiondamage,healing,power,precision,toughness,vitality,critdamage" => "celestial",
+    "conditiondamage,ferocity,healing,power,precision,toughness,vitality" => "celestial",
   };
 }
 
@@ -155,7 +177,7 @@ sub _init_cache {
     } else {
       mkdir $self->cache_dir or Carp::croak "Failed to create cache_dir [$self->cache_dir]: $!\n";
     }
-    return CHI->new( driver => 'File', root_dir => $self->cache_dir );
+    return CHI->new( driver => 'File::GW2API', root_dir => $self->cache_dir );
   }
   return undef;
 }
@@ -163,15 +185,18 @@ sub _init_cache {
 sub _retry(&;$) {
     my $sub_ref = shift;
     my $max     = shift || 3;
+    my $ret;
 
   ATTEMPT:
     for my $try (1..$max) {
-        eval { $sub_ref->(); };
+        $ret = eval { local $SIG{__DIE__}; $sub_ref->(); };
         last unless $@;
-        warn "Failed $try, retrying.  Error: $@\n";
+        last if $try == $max; # don't waste time sleeping if we've hit the max
+        #Carp::carp "Failed $try, retrying.  Error: $@\n";
         sleep(5);
     }
-    if ($@) { die "failed after $max tries: $@\n" }
+    if ($@) { Carp::carp "failed after $max tries: $@\n"; return undef; }
+    return $ret;
 }
 
 ####################
@@ -193,54 +218,62 @@ sub _api_request {
 
   my $url = $_base_url . '/' . $interface . $parm_string;
 
-  my $response;
+  my ($response, $decoded);
 
   # Check in CHI cache first
   $response = $self->cache->get($url) unless defined $self->{nocache};
 
-  if ( !defined $response ) {
+  if (!defined $response) {
 
     $self->_set_status(0);
 
     # If not in cache, send GET request to API
     $self->ua->timeout($self->{timeout});
 
-    for (my $i = 0; $i < $self->{retries}; $i++) {
+    # Encapsulate the entire HTTP request / JSON decode / CHI store process in a
+    # _retry block. If any of the 3 steps fails,
+    $decoded = _retry {
+      # Make HTTP GET request (doesn't die automatically)
       $response = $self->ua->get($url);
+      # warn $response->status_line() if $response->is_error();
+      die "Error getting URL [$url]:\n" . $response->status_line() if !defined($response);
+      $response = $response->decoded_content();
 
-      last if $response->is_success();
-    }
+      # ArenaNet uses UTF-8 encoding for text; this sets Perl's internal UTF-8
+      # flag for the returned data, inherited by all derived values.
+      utf8::decode($response);
 
-    # If no response or error after using up retries, die
-    if (!defined($response)) {
-      Carp::carp "Error getting URL [$url]:\n" . $response->status_line();
-      $self->cache->remove($url) unless defined $self->{nocache};
-      return undef;
-    }
+      # We have HTTP response, attempt to decode JSON (this dies on decode error, but the eval in _retry catches it)
+      my $ret = $self->json->decode($response);
 
-    $response = $response->decoded_content();
+      # JSON is valid, now store response to cache
+      unless (defined $self->{nocache}) {
+        $cache_age = $self->{cache_age} unless defined $cache_age;
+        $self->cache->set($url, $response, $cache_age);
+      }
 
-    # Set the CHI cache for this $url for efficient future access
-    unless (defined $self->{nocache}) {
-      $cache_age = $self->{cache_age} unless defined $cache_age;
-      _retry { $self->cache->set($url, $response, $cache_age); };
-    }
-  }
+      return $ret;
+    };
 
-  my $decoded;
-  eval { $decoded = $self->json->decode ($response) };
-  if ($@) {
-    Carp::carp "Error decoding JSON for URL [$url]:\n" . $@;
-    $self->cache->remove($url) unless defined $self->{nocache};
-    return undef;
-  }
+    ###### need handler here in case _retry fails
 
-  if (defined($decoded->{error})) {
-    Carp::carp "API error at [$url]";
-    $self->cache->remove($url) unless defined $self->{nocache};
   } else {
-    $self->_set_status(1);
+    # Decode cached JSON - cache can't be set unless JSON decodes successfully
+    # the first time, so this should always work, but do error-check anyway
+    eval { $decoded = $self->json->decode ($response) };
+    if ($@) {
+      Carp::carp "Error decoding JSON for URL [$url]:\n" . $@;
+      $self->cache->remove($url) unless defined $self->{nocache};
+      undef $response;
+    }
+
+    if (defined($decoded->{error})) {
+      Carp::carp "API error at [$url]";
+      $self->cache->remove($url) unless defined $self->{nocache};
+    }
   }
+
+  $self->_set_status(1);
 
   return ($response, $decoded);
 }
@@ -479,7 +512,7 @@ sub get_item {
 
   # Store the original raw JSON response
   $item->_set_json($raw);
-  $item->_set_md5(md5_hex($raw));
+  $item->_set_md5(md5_hex(utf8::encode($raw)));
 
   return $item;
 }
@@ -507,6 +540,10 @@ sub get_recipe {
   my ($raw, $json) = $self->_api_request($_url_recipe_details, { recipe_id => $recipe_id } );
 
   my $recipe = GuildWars2::API::Objects::Recipe->new( $json );
+
+  # Store the original raw JSON response
+  $recipe->_set_json($raw);
+  $recipe->_set_md5(md5_hex(utf8::encode($raw)));
 
   return $recipe;
 }

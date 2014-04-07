@@ -1,5 +1,4 @@
-use Carp ();
-use Modern::Perl '2012';
+use Modern::Perl '2014';
 
 package GuildWars2::API::Objects;
 BEGIN {

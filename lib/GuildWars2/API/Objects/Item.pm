@@ -1,5 +1,4 @@
-use Carp ();
-use Modern::Perl '2012';
+use Modern::Perl '2014';
 
 =pod
 
@@ -18,6 +17,7 @@ use Moose;
 use Moose::Util::TypeConstraints;
 
 use GuildWars2::API::Constants;
+use GuildWars2::API::Utils;
 
 with 'GuildWars2::API::Objects::Linkable';
 
@@ -184,6 +184,11 @@ A hash of boolean flags identifying how the item behaves. Keys and descriptions:
  Unique             Only 1 copy of this item can be equipped on a character at
                       a time.
 
+=item item_warnings
+
+If any inconsistencies or unknown values are encountered while parsing the API
+response, a warning message will be returned in this attribute.
+
 =back
 
 =head3 Methods
@@ -204,7 +209,7 @@ menu.
 
 my @_default_gametypes = qw( Activity Dungeon Pve Pvp PvpLobby Wvw );
 
-my @_default_flags = qw( AccountBound HideSuffix NoMysticForge NoSalvage NoSell NotUpgradeable NoUnderwater SoulBindOnAcquire SoulBindOnUse Unique );
+my @_default_flags = qw( AccountBound HideSuffix NoMysticForge NoSalvage NoSell NotUpgradeable NoUnderwater SoulbindOnAcquire SoulBindOnUse Unique );
 
 my %enum_map = (
   'item_type' => [qw(
@@ -302,8 +307,6 @@ around 'BUILDARGS', sub {
 
   local $" = ','; #" # <-- this is to satisfy syntax highlighting that can't interpret $" as a variable name
 
-  $args->{item_warnings} = "";
-
   # Renames and simple transforms (strip/convert newlines, etc.)
   if(my $a = delete $args->{name}) { ($args->{item_name} = $a) =~ s/\n//g }
   if(my $a = delete $args->{type}) { $args->{item_type} = $a }
@@ -353,10 +356,10 @@ around 'BUILDARGS', sub {
   _validate_enum($args, 'unlock_type');
 
   # Restrictions - returned as a list, only single value is meaningful
-  # A single item (17012) has restrictions = [Guardian,Warrior]
+  # Two items (17012, 18165) have restrictions = [Guardian,Warrior]
   # Otherwise this element is only used to define racial armor restrictions
   if(my $r = delete $args->{restrictions}) {
-    if (@$r == 1 && $r->[0] ~~ $enum_map{'armor_race'}) {
+    if (@$r == 1 && in($r->[0], $enum_map{'armor_race'})) {
       $args->{armor_race} = $r->[0];
     } elsif (@$r > 0) {
       $args->{item_warnings} .= "Unrecognized restrictions [@$r]\n";
@@ -370,7 +373,7 @@ around 'BUILDARGS', sub {
     $args->{infusion_slots} = []; # reinitialize to empty list
     foreach my $s (@$i) {
       my $f = $s->{flags};
-      if (@$f == 1 && $f->[0] ~~ $enum_map{'infusion_slot_type'}) {
+      if (@$f == 1 && in($f->[0], $enum_map{'infusion_slot_type'})) {
         push $args->{infusion_slots}, $f->[0];
       } elsif (@$f == 0) {
         push $args->{infusion_slots}, 'Agony';
@@ -386,9 +389,9 @@ around 'BUILDARGS', sub {
   # Agony infusions have an empty list and are called '+<x> Agony Infusion'
   if(my $iuf = delete $args->{infusion_upgrade_flags}) {
     @$iuf = sort @$iuf;
-    if (@$iuf == 1 && $iuf->[0] ~~ $enum_map{'infusion_type'}) {
+    if (@$iuf == 1 && in($iuf->[0], $enum_map{'infusion_slot_type'})) {
       $args->{infusion_type} = $iuf->[0];
-    } elsif (@$iuf == 3 && @$iuf ~~ $enum_map{'infusion_type'}) {
+    } elsif (@$iuf == 3 && array_match( $iuf, $enum_map{'infusion_slot_type'})) {
       $args->{infusion_type} = 'Omni';
     } elsif (@$iuf == 0 && $args->{item_name} =~ /Agony Infusion/) {
       $args->{infusion_type} = 'Agony';
@@ -397,15 +400,21 @@ around 'BUILDARGS', sub {
     }
   }
 
-  # Attachment flags -- UpgradeComponent only
+  # UpgradeComponent flags
   if(my $uf = delete $args->{upgrade_flags}) {
     # Making assumptions about the only valid flag combinations
     for (scalar @$uf) {
-      $args->{upgrade_type} = 'Trinket' when 1;
-      $args->{upgrade_type} = 'Armor'   when 3;
-      $args->{upgrade_type} = 'Weapon'  when 19;
-      $args->{upgrade_type} = 'All'     when 23;
-      default { $args->{item_warnings} .= "Unrecognized upgrade flags [@$uf]\n"; }
+      if ($_ == 1) {
+        $args->{upgrade_type} = 'Trinket';
+      } elsif ($_ == 3) {
+        $args->{upgrade_type} = 'Armor';
+      } elsif ($_ == 19) {
+        $args->{upgrade_type} = 'Weapon';
+      } elsif ($_ == 23) {
+        $args->{upgrade_type} = 'All';
+      } else {
+        $args->{item_warnings} .= "Unrecognized upgrade flags [@$uf]\n";
+      }
     }
   }
 
@@ -413,6 +422,7 @@ around 'BUILDARGS', sub {
   if(my $gametypes = delete $args->{game_types}) {
     $args->{game_type_flags} = { map { $_ => 0 } @_default_gametypes };
     foreach my $g (@$gametypes) {
+      $args->{item_warnings} .= "Unrecognized game_type [$g]\n" unless in($g, \@_default_gametypes);
       $args->{game_type_flags}->{$g} = 1;
     }
   }
@@ -421,7 +431,7 @@ around 'BUILDARGS', sub {
   if(my $flags = delete $args->{flags}) {
     $args->{item_flags} = { map { $_ => 0 } @_default_flags };
     foreach my $f (@$flags) {
-      $f =~ s/Soulbind/SoulBind/; # for consistent sorting between SoulbindOnAcquire and SoulBindOnUse
+      $args->{item_warnings} .= "Unrecognized item flag [$f]\n" unless in($f, \@_default_flags);
       $args->{item_flags}->{$f} = 1;
     }
   }
@@ -435,7 +445,7 @@ sub _validate_enum {
   my ($args, $field) = @_;
   my $a = $args->{$field};
   return if !$a;
-  unless ($a~~ $enum_map{$field}) {
+  unless (in($a, $enum_map{$field})) {
     $args->{item_warnings} .= "Unrecognized $field: [$a].\n";
     $args->{$field} = '';
   }
@@ -475,7 +485,6 @@ sub _prefix_lookup {
   }
   else { return 'n/a' }
 }
-
 
 
 =pod

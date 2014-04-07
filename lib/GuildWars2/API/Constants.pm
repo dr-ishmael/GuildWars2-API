@@ -13,9 +13,9 @@ use constant {
 };
 
 use constant {
-  DISC_IDX => 0,
-  AUTO_IDX => 1,
-  ITEM_IDX => 2,
+  DISC_IDX => 1,
+  AUTO_IDX => 2,
+  ITEM_IDX => 3,
 };
 
 our @EXPORT = qw(

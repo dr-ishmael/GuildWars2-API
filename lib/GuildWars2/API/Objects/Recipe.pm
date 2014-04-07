@@ -1,5 +1,4 @@
-use Carp ();
-use Modern::Perl '2012';
+use Modern::Perl '2014';
 
 =pod
 
@@ -18,6 +17,7 @@ use Moose;
 use Moose::Util::TypeConstraints;
 
 use GuildWars2::API::Constants;
+use GuildWars2::API::Utils;
 
 with 'GuildWars2::API::Objects::Linkable';
 
@@ -82,12 +82,12 @@ The method by which the recipe is learned. Possible values are:
 
 =over
 
-=item * I<auto> - The recipe is automatically unlocked upon reaching the
+=item * I<Automatic> - The recipe is automatically unlocked upon reaching the
 min_rating in an associated discipline.
 
-=item * I<discover> - The recipe is unlocked through the Discovery screen.
+=item * I<Discovery> - The recipe is unlocked through the Discovery screen.
 
-=item * I<item> - The recipe is unlocked by using a "recipe sheet" consumable
+=item * I<Sheet> - The recipe is unlocked by using a "recipe sheet" consumable
 item.
 
 =back
@@ -97,6 +97,13 @@ item.
 The base time, in milliseconds, that the recipe takes to complete. When crafting
 multiples of a recipe at once, this time gradually reduces to about 1/3 of its
 original value.
+
+=item recipe_warnings
+
+If any inconsistencies or unknown values are encountered while parsing the API
+response, a warning message will be returned in this attribute.
+
+=back
 
 =head3 Methods
 
@@ -120,19 +127,19 @@ type, however.
                       Arm Art Chf Hnt Jwl Lth Tlr Wep
                       --- --- --- --- --- --- --- ---
  Component             x   x   x   x   x   x   x   x
- Consumable            x   x   x   x   x   x   x   x
- Refinement            x   x   x   x   x   x   x   x
- UpgradeComponent      x   x   x   x   x   x   x   x
+ Consumable            x   x       x   x   x   x   x
+ Inscription               x       x               x
+ Insignia              x                   x   x
+ Refinement            x   x       x   x   x   x   x
+ UpgradeComponent      x   x       x   x   x   x   x
  Bag                   x                   x   x
  Boots                 x                   x   x
  Bulk                  x                   x   x
  Coat                  x                   x   x
  Gloves                x                   x   x
  Helm                  x                   x   x
- Insignia              x                   x   x
  Leggings              x                   x   x
  Shoulders             x                   x   x
- Inscription               x       x               x
  Focus                     x
  Potion                    x
  Scepter                   x
@@ -169,26 +176,33 @@ type, however.
 
 =cut
 
-my @_default_disciplines = qw( armorsmith artificer chef huntsman jeweler leatherworker tailor weaponsmith );
+my @_default_disciplines = qw( Armorsmith Artificer Chef Huntsman Jeweler Leatherworker Tailor Weaponsmith );
 
-enum 'RecipeType', [qw(
-    Amulet Axe Bag Boots Bulk Coat Component Consumable Dagger Dessert Dye
-    Earring Feast Focus Gloves Greatsword Hammer Harpoon Helm IngredientCooking
-    Inscription Insignia Leggings LongBow Mace Meal Pistol Potion Refinement
-    Rifle Ring Scepter Seasoning Shield ShortBow Shoulders Snack Soup Speargun
-    Staff Sword Torch Trident UpgradeComponent Warhorn
-    Unknown
-  )];
+my %enum_map = (
+  'recipe_type' => [qw(
+      Amulet Axe Bag Boots Bulk Coat Component Consumable Dagger Dessert Dye
+      Earring Feast Focus Gloves Greatsword Hammer Harpoon Helm IngredientCooking
+      Inscription Insignia Leggings LongBow Mace Meal Pistol Potion Refinement
+      RefinementEctoplasm RefinementObsidian Rifle Ring Scepter Seasoning Shield
+      ShortBow Shoulders Snack Soup Speargun Staff Sword Torch Trident
+      UpgradeComponent Warhorn Unknown
+    )],
+);
 
-has 'recipe_id'           => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'recipe_type'         => ( is => 'ro', isa => 'RecipeType',     required => 1 );
-has 'output_item_id'      => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'output_item_count'   => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'min_rating'          => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'time_to_craft_ms'    => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'disciplines'         => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
-has '_unlock_method'      => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'ingredients'         => ( is => 'ro', isa => 'HashRef[Int]',   required => 1 );
+enum 'RecipeType', $enum_map{'recipe_type'};
+
+has 'recipe_id'         => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'recipe_type'       => ( is => 'ro', isa => 'Str',            required => 1 );
+has 'output_item_id'    => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'output_item_count' => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'min_rating'        => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'time_to_craft_ms'  => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'disciplines'       => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
+has '_unlock_method'    => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'ingredients'       => ( is => 'ro', isa => 'HashRef[Int]',   required => 1 );
+has 'raw_json'          => ( is => 'ro', isa => 'Str', writer => '_set_json' );
+has 'raw_md5'           => ( is => 'ro', isa => 'Str', writer => '_set_md5'  );
+has 'recipe_warnings'   => ( is => 'ro', isa => 'Str' );
 
 around 'BUILDARGS', sub {
   my ($orig, $class, $args) = @_;
@@ -196,15 +210,27 @@ around 'BUILDARGS', sub {
   if(my $disciplines = delete $args->{disciplines}) {
     $args->{disciplines} = { map { $_ => 0 } @_default_disciplines };
     foreach my $d (@$disciplines) {
-      $args->{disciplines}->{lc($d)} = 1;
+      if (in($d, \@_default_disciplines)) {
+        $args->{disciplines}->{$d} = 1;
+      } else {
+        $args->{recipe_warnings} .= "Unrecognized discipline [$d]\n";
+      }
     }
   }
 
   if(my $flags = delete $args->{flags}) {
-    my $a = "AutoLearned"      ~~ @$flags ? 1 : 0;
-    my $i = "LearnedFromItem"  ~~ @$flags ? 1 : 0;
-
-    $args->{_unlock_method} = $a ? AUTO_IDX : $i ? ITEM_IDX : DISC_IDX;
+    if (@$flags == 1 && in($flags->[0], [ "AutoLearned", "LearnedFromItem" ])) {
+      my $f = $flags->[0];
+      $args->{_unlock_method} =
+          $f eq "AutoLearned" ? AUTO_IDX
+        : $f eq "LearnedFromItem" ? ITEM_IDX
+        : 0;
+    } elsif (@$flags == 0) {
+      $args->{_unlock_method} = DISC_IDX;
+    } else {
+      $args->{_unlock_method} = 0;
+      $args->{recipe_warnings} .= "Unrecognized flags [@$flags]\n";
+    }
   }
 
   if(my $ingredients = delete $args->{ingredients}) {
@@ -213,12 +239,25 @@ around 'BUILDARGS', sub {
     }
   }
 
-  if(my $t = delete $args->{type}) {
-    $args->{recipe_type} = $t;
-  }
+  if(my $t = delete $args->{type}) { $args->{recipe_type} = $t; }
+
+  # Validation of enumerated fields
+  _validate_enum($args, 'recipe_type');
 
   $class->$orig($args);
 };
+
+# Method to perform "soft" validations on enumerated fields
+# Invalid values will add a warning to $args->{moose_warnings} and blank the output field
+sub _validate_enum {
+  my ($args, $field) = @_;
+  my $a = $args->{$field};
+  return if !$a;
+  unless (in($a, $enum_map{$field})) {
+    $args->{recipe  _warnings} .= "Unrecognized $field: [$a].\n";
+    $args->{$field} = '';
+  }
+}
 
 # Method required to provide type and ID to Linkable role
 sub _gl_data {
@@ -229,19 +268,20 @@ sub _gl_data {
 sub unlock_method {
   my ($self) = @_;
   for ($self->_unlock_method) {
-    return 'auto'     when AUTO_IDX;
-    return 'discover' when DISC_IDX;
-    return 'item'     when ITEM_IDX;
+    return 'Automatic'    if $_ == AUTO_IDX;
+    return 'Discovery'    if $_ == DISC_IDX;
+    return 'RecipeSheet'  if $_ == ITEM_IDX;
+    return 'Unknown';
   }
 }
 
-sub armorsmith    { return $_[0]->{disciplines}->{armorsmith}; }
-sub artificer     { return $_[0]->{disciplines}->{artificer}; }
-sub chef          { return $_[0]->{disciplines}->{chef}; }
-sub huntsman      { return $_[0]->{disciplines}->{huntsman}; }
-sub jeweler       { return $_[0]->{disciplines}->{jeweler}; }
-sub leatherworker { return $_[0]->{disciplines}->{leatherworker}; }
-sub tailor        { return $_[0]->{disciplines}->{tailor}; }
-sub weaponsmith   { return $_[0]->{disciplines}->{weaponsmith}; }
+sub armorsmith    { return $_[0]->{disciplines}->{Armorsmith}; }
+sub artificer     { return $_[0]->{disciplines}->{Artificer}; }
+sub chef          { return $_[0]->{disciplines}->{Chef}; }
+sub huntsman      { return $_[0]->{disciplines}->{Huntsman}; }
+sub jeweler       { return $_[0]->{disciplines}->{Jeweler}; }
+sub leatherworker { return $_[0]->{disciplines}->{Leatherworker}; }
+sub tailor        { return $_[0]->{disciplines}->{Tailor}; }
+sub weaponsmith   { return $_[0]->{disciplines}->{Weaponsmith}; }
 
 1;

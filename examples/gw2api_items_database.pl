@@ -1,24 +1,23 @@
 #!perl
 
-use strict;
-use warnings;
-
-use Modern::Perl '2012';
+use Modern::Perl '2014';
 
 use DateTime;
 use DBI;
-use IO::File;
+use Term::ProgressBar;
 
 use threads;
 use threads::shared;
 use Thread::Queue;
 
 use GuildWars2::API;
+use GuildWars2::API::Utils;
 
+my $VERBOSE = 0;
 
 ###
 # Set up API interface
-my $api = GuildWars2::API->new;
+my $boss_api = GuildWars2::API->new( nocache => 1 );
 
 # Read config info for database
 # This file contains a single line, of the format:
@@ -39,39 +38,43 @@ my %db :shared;
 @db{@db_keys} = @db_vals;
 
 # Connect to database
-my $boss_dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'name'}, $db{'schema'}, $db{'pass'})
+my $boss_dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'name'}, $db{'schema'}, $db{'pass'},{mysql_enable_utf8 => 1})
   or die "Can't connect: $DBI::errstr\n";
 
+
 # Get the last known build ID from database
-my $sth_get_build = $boss_dbh->prepare('select ifnull(max(build_id),-1) from build_tb')
+print "Looking up last known build ID....." if $VERBOSE;
+my $sth_get_build = $boss_dbh->prepare("select ifnull(max(build_id),-1) from build_tb where items_processed = 'Y'")
   or die "Can't prepare statement: $DBI::errstr";
 
 my $max_build_id = $boss_dbh->selectrow_array($sth_get_build)
   or die "Can't execute statement: $DBI::errstr";
 
+say " $max_build_id" if $VERBOSE;
+
 # Get the current build ID from API
-my $curr_build_id :shared = $api->build();
+print "Getting current build ID from API..." if $VERBOSE;
+my $curr_build_id :shared = $boss_api->build();
+say " $curr_build_id" if $VERBOSE;
 
 # Update database if new build
 my $new_build :shared = 0;
 
 if ($curr_build_id > $max_build_id) {
+  say "New build detected! All items will be re-fecthed from the API.";
   $new_build = 1;
-
-  my $sth_insert_build = $boss_dbh->prepare('insert into build_tb (build_id) values (?)')
-    or die "Can't prepare statement: $DBI::errstr";
-
-  $sth_insert_build->execute($curr_build_id)
+  # IGNORE in this statement is in case the recipes process has already done this for this build
+  $boss_dbh->do('insert IGNORE into build_tb (build_id) values (?)', {}, $curr_build_id)
     or die "Can't execute statement: $DBI::errstr";
-
-  # Delete all cached items to ensure we catch every change in this new build
-  $api->empty_item_cache;
+} else {
+  say "Not a new build, existing items will be skipped.";
 }
 
 # Get current MD5 and last build ID for all items from database
 my %item_md5s :shared;
 my %item_blds :shared;
 
+say "Retrieving local MD5 data..." if $VERBOSE;
 my $sth_item_md5 = $boss_dbh->prepare('select item_id, item_md5 from item_index_tb')
   or die "Can't prepare statement: $DBI::errstr";
 
@@ -81,22 +84,43 @@ while (my $i = $sth_item_md5->fetchrow_arrayref()) {
   $item_md5s{$i->[0]} = $i->[1];
 }
 
-my $sth_item_bld = $boss_dbh->prepare('select item_id, last_seen_build_id from item_index_tb')
-  or die "Can't prepare statement: $DBI::errstr";
+# Get list of items from API
+say "Getting current list of items..." if $VERBOSE;
+my @api_item_ids = $boss_api->list_items();
 
-$sth_item_bld->execute() or die "Can't execute statement: $DBI::errstr";
+my $tot_items = scalar @api_item_ids;
+say $tot_items . " total items in API." if $VERBOSE;
 
-while (my $i = $sth_item_bld->fetchrow_arrayref()) {
-  $item_blds{$i->[0]} = $i->[1];
+my @proc_item_ids;
+my $proc_items;
+if ($new_build) {
+  @proc_item_ids = @api_item_ids;
+} else {
+  # This computes the list disjunction of items in the API against items in our database.
+  # We only need to spend time processing items we don't already know.
+  @proc_item_ids  = grep {not $item_md5s{$_}} @api_item_ids;
 }
 
-# Disconnect, we don't need database in boss thread anymore
-$boss_dbh->disconnect;
+$proc_items = scalar @proc_item_ids;
 
-# Get list of items from API
-my @item_ids = $api->list_items();
+if ($proc_items == 0) {
+  # Short-circuit exit if nothing new to process
+  say "No new items to process; script will now exit";
+  exit(0);
+} elsif ($proc_items == $tot_items) {
+  say "All items will be re-processed." if $VERBOSE;
+} else{
+  say $proc_items . " new items to be processed." if $VERBOSE;
+}
 
-say scalar @item_ids . " total items to process.";
+say "Redirecting STDERR to gw2api.err; please check this file for any warnings or errors generated during the process.";
+open(my $olderr, ">&", \*STDERR) or die "Can't dup STDERR: $!";
+open(STDERR, ">", ".\\gw2api.err") or die "Can't redirect STDERR: $!";
+select STDERR; $| = 1;  # make unbuffered
+
+select STDOUT;
+
+say "Ready to begin processing.";
 
 ###
 # THREADING! SCARY!
@@ -124,6 +148,10 @@ $SIG{'INT'} = $SIG{'TERM'} =
 # Thread work queues referenced by thread ID
 my %work_queues;
 
+# Create queues for threads to report new/changed item_ids back to the boss
+my $new_q = Thread::Queue->new();
+my $updt_q = Thread::Queue->new();
+
 # Create the thread pool
 for (1..$MAX_THREADS) {
   # Create a work queue for a thread
@@ -137,6 +165,12 @@ for (1..$MAX_THREADS) {
 }
 
 my $i = 0;
+my @new_item_arr;
+my @updt_item_arr;
+
+my $progress = Term::ProgressBar->new({name => 'Items processed', count => $tot_items, fh => \*STDOUT});
+$progress->minor(0);
+my $next_update = 0;
 
 # Manage the thread pool until signalled to terminate
 while (! $TERM) {
@@ -151,20 +185,30 @@ while (! $TERM) {
       # If a worker terminated, clean it up
       #threads->object($tid)->join();
     }
-    last if (scalar @item_ids == 0);
+    last if (scalar @proc_item_ids == 0);
 
     # Give the thread some work to do
-    my @ids_to_process = splice @item_ids, 0, 10;
+    my @ids_to_process = splice @proc_item_ids, 0, 10;
     $work_queues{$tid}->enqueue(@ids_to_process);
 
-    say (DateTime->now(time_zone  => 'America/Chicago')->datetime() . " $i...") if ($i % 500) == 0;
+    # Take note of new/updated item_ids passed back from threads
+    push @new_item_arr, $new_q->dequeue() while ($new_q->pending());
+    push @updt_item_arr, $updt_q->dequeue() while ($updt_q->pending());
 
     $i += scalar @ids_to_process;
+    $next_update = $progress->update($i)
+      if $i >= $next_update;
 
     #last if $i >= 200;
 }
 
-say "$i items processed.";
+# Take note of new/updated item_ids passed back from threads
+push @new_item_arr, $new_q->dequeue() while ($new_q->pending());
+push @updt_item_arr, $updt_q->dequeue() while ($updt_q->pending());
+
+$progress->update($tot_items)
+  if $tot_items >= $next_update;
+say "";
 
 # Signal all threads that there is no more work
 $work_queues{$_}->end() foreach keys(%work_queues);
@@ -172,9 +216,49 @@ $work_queues{$_}->end() foreach keys(%work_queues);
 # Wait for all the threads to finish
 $_->join() foreach threads->list();
 
-print("Done\n");
+my $now = DateTime->now(time_zone  => 'America/Chicago');
+
+my $rpt_filename = "gw2api_items_report_".$now->ymd('').$now->hms('').".txt";
+
+open(RPT, ">", $rpt_filename) or die "Can't open report file: $!";
+
+say RPT "NEW";
+say RPT "--------";
+say RPT $_ foreach (sort { $a <=> $b } @new_item_arr);
+say RPT "";
+say RPT "CHANGE";
+say RPT "--------";
+say RPT $_ foreach (sort { $a <=> $b } @updt_item_arr);
+
+close(RPT);
+
+say "";
+say "GW2API Items Report";
+say "";
+say "Statistic  Count";
+say "---------- --------";
+say sprintf '%-10s %8s', 'TOTAL', $tot_items;
+say sprintf '%-10s %8s', 'PROCESSED', $proc_items;
+say sprintf '%-10s %8s', 'NEW', scalar @new_item_arr;
+say sprintf '%-10s %8s', 'CHANGES', scalar @updt_item_arr;
+
+say "";
+say "For details see $rpt_filename";
+
+open(STDERR, ">&", $olderr)    or die "Can't dup OLDERR: $!";
+
+
+# If this was the first time processing this build, update the processed flag
+if ($new_build) {
+  $boss_dbh->do("update build_tb set items_processed = 'Y' where build_id = ?", {}, $curr_build_id)
+    or die "Unable to updated items_processed flag: $DBI::errstr";
+}
 
 exit(0);
+
+
+
+
 
 ######################################
 ### Thread Entry Point Subroutines ###
@@ -190,13 +274,16 @@ sub worker
   my $tid = threads->tid();
 
   # Open a log file
-  my $log = IO::File->new(">>gw2api_items_t$tid.log");
-  if (!defined($log)) {
-    die "Can't open logfile: $!";
+  my $log;
+  if ($VERBOSE) {
+    $log = IO::File->new(">>gw2api_items_t$tid.log");
+    if (!defined($log)) {
+      die "Can't open logfile: $!";
+    }
+    $log->autoflush;
   }
-  $log->autoflush;
 
-  say $log "This is thread $tid starting up!";
+  say $log "This is thread $tid starting up!" if $VERBOSE;
 
   my $item_id;
 
@@ -204,21 +291,24 @@ sub worker
   $SIG{__DIE__} =
     sub {
       my @loc = caller(1);
-      print STDOUT ">>> Thread $tid died on item $item_id! <<<\n";
-      print STDOUT "Kill happened at line $loc[2] in $loc[1]:\n", @_, "\n";
+      print STDERR ">>> Thread $tid (fake) died on item $item_id! <<<\n";
+      print STDERR "Kill happened at line $loc[2] in $loc[1]:\n", @_, "\n";
       # Add -$tid to head of idle queue to signal termination
       $IDLE_QUEUE->insert(0, -$tid);
       return 1;
     };
 
+  # Create our very own API object
+  my $api = GuildWars2::API->new( nocache => 1 );
+
   # Open a database connection
-  say $log "Opening database connection.";
-  my $dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'name'}, $db{'schema'}, $db{'pass'})
+  say $log "Opening database connection." if $VERBOSE;
+  my $dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'name'}, $db{'schema'}, $db{'pass'},{mysql_enable_utf8 => 1})
     or die "Can't connect: $DBI::errstr\n";
-  say $log "\tDatabase connection established.";
+  say $log "\tDatabase connection established." if $VERBOSE;
 
   # Prepare the SQL statements we will need
-  say $log "Preparing SQL statements.";
+  say $log "Preparing SQL statements." if $VERBOSE;
 
   # Log the previous version of a changed item
   my $sth_index_log = $dbh->prepare('
@@ -304,74 +394,69 @@ sub worker
   my $sth_insert_rune = $dbh->prepare('insert into item_rune_bonus_tb values (?, ?, ?)')
     or die "Can't prepare statement: $DBI::errstr";
 
-  say $log "\tSQL statements prepared.";
+  say $log "\tSQL statements prepared." if $VERBOSE;
 
-  say $log "Beginning work loop.";
+  say $log "Beginning work loop." if $VERBOSE;
 
   # Work loop
   while (! $TERM) {
     # If the boss has closed the work queue, exit the work loop
     if (!defined($work_q->pending())) {
-      say $log "Work queue is closed, exiting work loop.";
+      say $log "Work queue is closed, exiting work loop." if $VERBOSE;
       last;
     }
 
     # If we have completed all work in the queue...
     if ($work_q->pending() == 0) {
-      say $log "Work queue is empty, signaling ready state.";
+      say $log "Work queue is empty, signaling ready state." if $VERBOSE;
       # ...indicate that were are ready to do more work
       $IDLE_QUEUE->enqueue($tid);
     }
 
     # Wait for work from the queue
-    say $log "Getting work from the queue...";
+    say $log "Getting work from the queue..." if $VERBOSE;
     $item_id = $work_q->dequeue();
     if (!defined($item_id)) {
-      say $log "\tQueue returned undef! I quit.";
+      say $log "\tQueue returned undef! I quit." if $VERBOSE;
       last;
     }
-    say $log "\tGot work: item_id = $item_id";
+    say $log "\tGot work: item_id = $item_id" if $VERBOSE;
 
     #################################
     # HERE'S ALL THE WORK
 
-    # Unless there's been a new build, we can assume there are no changes to
-    # items we've already processed during this build.
-    # (Essentially this ensures we only process new items except on release day)
-    if (exists($item_blds{$item_id}) && $item_blds{$item_id} == $curr_build_id) {
-      say $log "Skipping item [$item_id], already processed for this build.";
-      next;
-    }
-
     my $change_flag = 0;
 
-    say $log "Getting current data from API...";
+    say $log "Getting current data from API..." if $VERBOSE;
     my $item = $api->get_item($item_id);
-    say $log "\tAPI data retrieved.";
+    say $log "\tAPI data retrieved." if $VERBOSE;
 
-    say $log "Looking up existing MD5...";
+    say $log "Looking up existing MD5..." if $VERBOSE;
     my $old_md5 = $item_md5s{$item_id};
     if ($old_md5) {
-      say $log "\tExisting MD5 is $old_md5.";
+      say $log "\tExisting MD5 is $old_md5." if $VERBOSE;
 
       if ($old_md5 eq $item->raw_md5) {
         # No change
-        say $log "MD5 unchanged, updating last_seen_dt.";
+        say $log "MD5 unchanged, updating last_seen_dt." if $VERBOSE;
         $sth_index_update->execute($item_id, $curr_build_id)
           or die "Can't execute statement: $DBI::errstr";
-        say $log "\tlast_seen_dt updated.";
+        say $log "\tlast_seen_dt updated." if $VERBOSE;
       } else {
-        say $log "New MD5 is ".$item->raw_md5.", item data has changed.";
-        $change_flag = 1;
+        say $log "New MD5 is ".$item->raw_md5.", item data has changed." if $VERBOSE;
 
-        say $log "Archiving item index...";
+        $change_flag = 1;
+        $updt_q->enqueue($item_id);
+
+        say $log "Archiving item index..." if $VERBOSE;
         $sth_index_log->execute($curr_build_id, $item_id)
           or die "Can't execute statement: $DBI::errstr";
-        say $log "\tIndex archive complete.";
+        say $log "\tIndex archive complete." if $VERBOSE;
       }
     } else {
-      say $log "\tItem is new.";
+      say $log "\tItem is new." if $VERBOSE;
       $change_flag = 1;
+      $new_q->enqueue($item_id);
     }
 
 # For the future!
@@ -381,27 +466,27 @@ sub worker
 #  my $item_fr = $api->get_item($item_id, 'fr');
 
     if ($change_flag) {
-      say $log "Updating item index...";
+      say $log "Updating item index..." if $VERBOSE;
       $sth_index_upsert->execute($item_id, $item->raw_json, $item->raw_md5, $curr_build_id, $curr_build_id, $curr_build_id)
         or die "Can't execute statement: $DBI::errstr";
-      say $log "\tIndex update complete.";
+      say $log "\tIndex update complete." if $VERBOSE;
 
       my $item_prefix;
       my $infusion_slot1;
       my $infusion_slot2;
 
-      if ($item->item_type ~~ [ 'Armor', 'Back', 'Trinket', 'Weapon', ] ) {
-        say $log "Item is equippable, determining prefix...";
+      if (in($item->item_type, [ 'Armor', 'Back', 'Trinket', 'Weapon', ] ) ) {
+        say $log "Item is equippable, determining prefix..." if $VERBOSE;
         $item_prefix = $api->prefix_lookup($item);
         if ($item->can('infusion_slots')) {
           ($infusion_slot1, $infusion_slot2) = @{$item->{infusion_slots}};
         }
-        say $log "\tItem prefix is $item_prefix.";
+        say $log "\tItem prefix is $item_prefix." if $VERBOSE;
       }
 
 
       # New or change
-      say $log "Updating item data...";
+      say $log "Updating item data..." if $VERBOSE;
       $sth_data_upsert->execute(
          $item->item_id
         ,$item->item_name
@@ -424,7 +509,7 @@ sub worker
         ,$item->item_flags->{'NoSell'}
         ,$item->item_flags->{'NotUpgradeable'}
         ,$item->item_flags->{'NoUnderwater'}
-        ,$item->item_flags->{'SoulBindOnAcquire'}
+        ,$item->item_flags->{'SoulbindOnAcquire'}
         ,$item->item_flags->{'SoulBindOnUse'}
         ,$item->item_flags->{'Unique'}
         ,$item->icon_file_id
@@ -452,36 +537,36 @@ sub worker
         ,$item->item_warnings
       )
         or die "Can't execute statement: $DBI::errstr";
-      say $log "\tData update complete.";
+      say $log "\tData update complete." if $VERBOSE;
 
       if (ref($item->rune_bonuses) eq 'ARRAY') {
-        say $log "Item is a rune. Deleting existing rune data.";
+        say $log "Item is a rune. Deleting existing rune data." if $VERBOSE;
         $sth_delete_rune->execute($item_id)
           or die "Can't execute statement: $DBI::errstr";
-        say $log "\tRune data deleted.";
+        say $log "\tRune data deleted." if $VERBOSE;
 
         for my $b (0..$#{$item->rune_bonuses}) {
-          say $log "Inserting rune bonus $b...";
+          say $log "Inserting rune bonus $b..." if $VERBOSE;
           my $bonus = $item->rune_bonuses->[$b];
           $sth_insert_rune->execute($item_id, $b, $bonus)
             or die "Can't execute statement: $DBI::errstr";
-          say $log "\tComplete.";
+          say $log "\tComplete." if $VERBOSE;
         }
-        say $log "\tAll rune data inserted.";
+        say $log "\tAll rune data inserted." if $VERBOSE;
       }
     }
-    say $log "\tCompleted processing item $item_id.";
+    say $log "\tCompleted processing item $item_id." if $VERBOSE;
     # Continue looping until told to terminate
   }
 
-  say $log "Boss signaled abnormal termination." if $TERM;
+  say $log "Boss signaled abnormal termination." if $TERM && $VERBOSE;
 
   # All done
-  say $log "Terminating database connection...";
+  say $log "Terminating database connection..." if $VERBOSE;
   $dbh->disconnect;
-  say $log "\tDatabase connection terminated.";
+  say $log "\tDatabase connection terminated." if $VERBOSE;
 
-  say $log "This is thread $tid signing off.";
-  $log->close;
+  say $log "This is thread $tid signing off." if $VERBOSE;
+  $log->close if $VERBOSE;
 
 }

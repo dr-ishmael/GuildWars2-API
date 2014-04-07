@@ -1,5 +1,4 @@
-use Carp ();
-use Modern::Perl '2012';
+use Modern::Perl '2014';
 
 =pod
 
@@ -16,6 +15,8 @@ objects.
 package GuildWars2::API::Objects::Guild;
 use Moose;
 use Moose::Util::TypeConstraints;
+
+use GuildWars2::API::Utils;
 
 subtype 'My::GuildWars2::API::Objects::Guild::Emblem' => as class_type('GuildWars2::API::Objects::Guild::Emblem');
 
@@ -138,10 +139,10 @@ has 'foreground_secondary_color_id' => ( is => 'ro', isa => 'Int',  required => 
 around 'BUILDARGS', sub {
   my ($orig, $class, %args) = @_;
   if(my $flags = delete $args{flags}) {
-    $args{flip_background_horizontal} = "FlipBackgroundHorizontal" ~~ @$flags ? 1 : 0;
-    $args{flip_background_vertical}   = "FlipBackgroundVertical"   ~~ @$flags ? 1 : 0;
-    $args{flip_foreground_horizontal} = "FlipForegroundHorizontal" ~~ @$flags ? 1 : 0;
-    $args{flip_foreground_vertical}   = "FlipForegroundVertical"   ~~ @$flags ? 1 : 0;
+    $args{flip_background_horizontal} = in("FlipBackgroundHorizontal", $flags) ? 1 : 0;
+    $args{flip_background_vertical}   = in("FlipBackgroundVertical",   $flags) ? 1 : 0;
+    $args{flip_foreground_horizontal} = in("FlipForegroundHorizontal", $flags) ? 1 : 0;
+    $args{flip_foreground_vertical}   = in("FlipForegroundVertical",   $flags) ? 1 : 0;
   }
 
   $class->$orig(%args);

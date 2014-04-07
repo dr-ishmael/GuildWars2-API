@@ -1,4 +1,4 @@
-CREATE DATABASE  IF NOT EXISTS `gw2api` /*!40100 DEFAULT CHARACTER SET latin1 */;
+CREATE DATABASE  IF NOT EXISTS `gw2api` /*!40100 DEFAULT CHARACTER SET utf8 */;
 USE `gw2api`;
 -- MySQL dump 10.13  Distrib 5.6.13, for Win32 (x86)
 --
@@ -31,6 +31,7 @@ CREATE TABLE `item_index_tb` (
   `first_seen_build_id` mediumint(8) NOT NULL,
   `last_seen_build_id` mediumint(8) NOT NULL,
   `last_updt_build_id` mediumint(8) NOT NULL,
+  `last_updt_dt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -44,4 +45,4 @@ CREATE TABLE `item_index_tb` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-03-29 15:58:19
+-- Dump completed on 2014-04-06 20:43:07
