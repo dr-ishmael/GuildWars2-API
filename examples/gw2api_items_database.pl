@@ -89,7 +89,7 @@ say "Getting current list of items..." if $VERBOSE;
 my @api_item_ids = $boss_api->list_items();
 
 my $tot_items = scalar @api_item_ids;
-say $tot_items . " total items in API." if $VERBOSE;
+say $tot_items . " total items in API.";
 
 my @proc_item_ids;
 my $proc_items;
@@ -108,9 +108,9 @@ if ($proc_items == 0) {
   say "No new items to process; script will now exit";
   exit(0);
 } elsif ($proc_items == $tot_items) {
-  say "All items will be re-processed." if $VERBOSE;
+  say "All items will be re-processed.";
 } else{
-  say $proc_items . " new items to be processed." if $VERBOSE;
+  say $proc_items . " new items to be processed.";
 }
 
 say "Redirecting STDERR to gw2api.err; please check this file for any warnings or errors generated during the process.";

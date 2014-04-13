@@ -26,7 +26,9 @@ DROP TABLE IF EXISTS `build_tb`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `build_tb` (
   `build_id` mediumint(8) unsigned NOT NULL,
-  `build_dt` datetime DEFAULT CURRENT_TIMESTAMP,
+  `build_dt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `items_processed` char(1) NOT NULL DEFAULT 'N',
+  `recipes_processed` char(1) NOT NULL DEFAULT 'N',
   PRIMARY KEY (`build_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -40,4 +42,4 @@ CREATE TABLE `build_tb` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-04-06 20:43:07
+-- Dump completed on 2014-04-13 11:10:06

@@ -89,7 +89,7 @@ say "Getting current list of recipes..." if $VERBOSE;
 my @api_recipe_ids = $boss_api->list_recipes();
 
 my $tot_recipes = scalar @api_recipe_ids;
-say $tot_recipes . " total recipes in API." if $VERBOSE;
+say $tot_recipes . " total recipes in API.";
 
 my @proc_recipe_ids;
 my $proc_recipes;
@@ -108,9 +108,9 @@ if ($proc_recipes == 0) {
   say "No new recipes to process; script will now exit";
   exit(0);
 } elsif ($proc_recipes == $tot_recipes) {
-  say "All recipes will be re-processed." if $VERBOSE;
+  say "All recipes will be re-processed.";
 } else{
-  say $proc_recipes . " new recipes to be processed." if $VERBOSE;
+  say $proc_recipes . " new recipes to be processed.";
 }
 
 #say "Redirecting STDERR to gw2api.err; please check this file for any warnings or errors generated during the process.";
