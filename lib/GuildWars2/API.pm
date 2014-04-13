@@ -1,31 +1,15 @@
 use Modern::Perl '2014';
 
-package CHI::Driver::File::GW2API;
-
-use Moo;
-
-extends 'CHI::Driver::File';
-
-sub generate_temporary_filename {
-    my ( $self, $dir, $file ) = @_;
-    return undef;
-}
-
-
-
-
 package GuildWars2::API;
 BEGIN {
   $GuildWars2::API::VERSION     = '0.50';
 }
 use Carp ();
-use CHI;
 use Digest::MD5 qw(md5_hex);
 use File::Find;
 use JSON::PP;
 use List::Util qw/max min/;
 use LWP::UserAgent;
-use Time::Duration::Parse;
 
 use Moose;
 use Moose::Util qw( with_traits );
@@ -95,8 +79,14 @@ has 'json'            => ( is => 'ro', isa => 'JSON::PP', default => sub{ JSON::
 has 'ua'              => ( is => 'ro', isa => 'LWP::UserAgent', default => sub{ LWP::UserAgent->new } );
 has 'cache'           => ( is => 'ro', isa => 'Maybe[CHI::Driver::File]', lazy => 1, builder => '_init_cache' );
 has '_status'         => ( is => 'ro', isa => 'Bool', default => 1, writer => '_set_status', reader => 'is_success' );
-has '_prefix_map'      => ( is => 'ro', isa => 'HashRef', builder => '_build_prefix_map' );
+has '_prefix_map'     => ( is => 'ro', isa => 'HashRef', lazy => 1, builder => '_build_prefix_map' );
 
+# This is to ensure that the cache is lazy-built immediately (yeah that's an oxymoron)
+# It has to be lazy because it depends on the cache_dir attribute.
+sub BUILD {
+  my $self = shift;
+  $self->cache->is_valid('dummykey') unless $self->nocache;
+}
 
 ####################
 # Init methods
@@ -163,7 +153,12 @@ sub _init_cache {
   my $self = shift;
 
   unless (defined $self->nocache) {
-    # If it exists...
+    # Conditionally 'require' CHI and associated modules here instead of
+    # 'use'ing them at the top; if user doesn't want a cache, no need to
+    # waste compile time loading them
+    require CHI;
+    require GuildWars2::API::FileCache;
+    # If cache_dir exists...
     if ( -e $self->cache_dir ) {
       # ... make sure it's a directory
       if ( ! -d $self->cache_dir ) {
@@ -276,29 +271,6 @@ sub _api_request {
   $self->_set_status(1);
 
   return ($response, $decoded);
-}
-
-
-####################
-# Utility methods
-####################
-
-sub clean_item_cache {
-  my ($self) = @_;
-
-  my $now = time();
-  my $AGE = parse_duration($self->{item_cache_age});
-  my $wanted = sub { unlink $_ if -f $_ && $_ =~ /(item|recipe)_details/ && $now - (stat $_)[9] > $AGE; };
-  find ( { no_chdir => 1, wanted => $wanted }, $self->{cache_dir} );
-}
-
-sub empty_item_cache {
-  my ($self) = @_;
-
-  my $now = time();
-  my $AGE = parse_duration($self->{item_cache_age});
-  my $wanted = sub { unlink $_ if -f $_ && $_ =~ /(item|recipe)_details/; };
-  find ( { no_chdir => 1, wanted => $wanted }, $self->{cache_dir} );
 }
 
 
