@@ -106,7 +106,7 @@ $proc_items = scalar @proc_item_ids;
 if ($proc_items == 0) {
   # Short-circuit exit if nothing new to process
   say "No new items to process; script will now exit";
-  exit(0);
+  #exit(0);
 } elsif ($proc_items == $tot_items) {
   say "All items will be re-processed.";
 } else{
@@ -197,8 +197,8 @@ while (! $TERM) {
 }
 
 # Take note of new/updated item_ids passed back from threads
-push(@new_item_arr, $new_q->dequeue()) while ($new_q->pending());
-push(@updt_item_arr, $updt_q->dequeue()) while ($updt_q->pending());
+while ($new_q->pending() > 0) { push @new_item_arr, $new_q->dequeue(); }
+while ($updt_q->pending() > 0) { push @updt_item_arr, $updt_q->dequeue(); }
 
 $progress->update($tot_items)
   if $tot_items >= $next_update;
@@ -328,8 +328,8 @@ sub worker
 
   # Upsert a new or changed item to the data table
   my $sth_data_upsert = $dbh->prepare('
-      insert into item_tb (item_id, item_name, item_type, item_subtype, item_level, item_rarity, item_description, vendor_value, game_type_activity, game_type_dungeon, game_type_pve, game_type_pvp, game_type_pvplobby, game_type_wvw, flag_accountbound, flag_hidesuffix, flag_nomysticforge, flag_nosalvage, flag_nosell, flag_notupgradeable, flag_nounderwater, flag_soulbindonacquire, flag_soulbindonuse, flag_unique, item_file_id, item_file_signature, equip_prefix, equip_infusion_slot_1_type, equip_infusion_slot_1_item_id, equip_infusion_slot_2_type, equip_infusion_slot_2_item_id, suffix_item_id, suffix_2_item_id, buff_skill_id, buff_description, armor_class, armor_race, bag_size, bag_invisible, food_duration_sec, food_description, tool_charges, unlock_type, unlock_color_id, unlock_recipe_id, upgrade_type, upgrade_suffix, upgrade_infusion_type, weapon_damage_type, item_warnings)
-      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      insert into item_tb (item_id, item_name, item_type, item_subtype, item_level, item_rarity, item_description, vendor_value, game_type_activity, game_type_dungeon, game_type_pve, game_type_pvp, game_type_pvplobby, game_type_wvw, flag_accountbindonuse, flag_accountbound, flag_hidesuffix, flag_nomysticforge, flag_nosalvage, flag_nosell, flag_notupgradeable, flag_nounderwater, flag_soulbindonacquire, flag_soulbindonuse, flag_unique, item_file_id, item_file_signature, equip_prefix, equip_infusion_slot_1_type, equip_infusion_slot_1_item_id, equip_infusion_slot_2_type, equip_infusion_slot_2_item_id, suffix_item_id, second_suffix_item_id, buff_skill_id, buff_description, armor_class, armor_race, bag_size, bag_invisible, food_duration_sec, food_description, tool_charges, unlock_type, unlock_color_id, unlock_recipe_id, upgrade_type, upgrade_suffix, upgrade_infusion_type, weapon_damage_type, item_warnings)
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       on duplicate key update
         item_name=VALUES(item_name)
        ,item_type=VALUES(item_type)
@@ -344,6 +344,7 @@ sub worker
        ,game_type_pvp=VALUES(game_type_pvp)
        ,game_type_pvplobby=VALUES(game_type_pvplobby)
        ,game_type_wvw=VALUES(game_type_wvw)
+       ,flag_accountbindonuse=VALUES(flag_accountbindonuse)
        ,flag_accountbound=VALUES(flag_accountbound)
        ,flag_hidesuffix=VALUES(flag_hidesuffix)
        ,flag_nomysticforge=VALUES(flag_nomysticforge)
@@ -362,7 +363,7 @@ sub worker
        ,equip_infusion_slot_2_type=VALUES(equip_infusion_slot_2_type)
        ,equip_infusion_slot_2_item_id=VALUES(equip_infusion_slot_2_item_id)
        ,suffix_item_id=VALUES(suffix_item_id)
-       ,suffix_2_item_id=VALUES(suffix_2_item_id)
+       ,second_suffix_item_id=VALUES(second_suffix_item_id)
        ,buff_skill_id=VALUES(buff_skill_id)
        ,buff_description=VALUES(buff_description)
        ,armor_class=VALUES(armor_class)
@@ -502,6 +503,7 @@ sub worker
         ,$item->game_type_flags->{'Pvp'}
         ,$item->game_type_flags->{'PvpLobby'}
         ,$item->game_type_flags->{'Wvw'}
+        ,$item->item_flags->{'AccountBindOnUse'}
         ,$item->item_flags->{'AccountBound'}
         ,$item->item_flags->{'HideSuffix'}
         ,$item->item_flags->{'NoMysticForge'}
@@ -520,7 +522,7 @@ sub worker
         ,$item->infusion_slot_2_type
         ,$item->infusion_slot_2_item
         ,$item->suffix_item_id
-        ,$item->suffix_2_item_id
+        ,$item->second_suffix_item_id
         ,$item->buff_skill_id
         ,$item->buff_desc
         ,$item->armor_weight

@@ -10,6 +10,7 @@ use constant {
   SKILL_LINK_TYPE    =>  7,
   TRAIT_LINK_TYPE    =>  8,
   RECIPE_LINK_TYPE   => 10,
+  SKIN_LINK_TYPE     => 11,
 };
 
 use constant {

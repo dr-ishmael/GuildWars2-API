@@ -209,7 +209,7 @@ menu.
 
 my @_default_gametypes = qw( Activity Dungeon Pve Pvp PvpLobby Wvw );
 
-my @_default_flags = qw( AccountBound HideSuffix NoMysticForge NoSalvage NoSell NotUpgradeable NoUnderwater SoulbindOnAcquire SoulBindOnUse Unique );
+my @_default_flags = qw( AccountBindOnUse AccountBound HideSuffix NoMysticForge NoSalvage NoSell NotUpgradeable NoUnderwater SoulbindOnAcquire SoulBindOnUse Unique );
 
 my %enum_map = (
   'item_type' => [qw(
@@ -247,8 +247,8 @@ my %enum_map = (
   'damage_type' => [qw( Fire Ice Lightning Physical )],
   'infusion_type' => [qw( Agony Defense Offense Omni Utility )],
   'infusion_slot_type' => [qw( Defense Offense Utility )],
-  'unlock_type' => [qw( BagSlot BankTab CollectibleCapacity Content CraftingRecipe Dye )],
-  'upgrade_atype' => [qw( All Armor Trinket Weapon )],
+  'unlock_type' => [qw( BagSlot BankTab CollectibleCapacity Content CraftingRecipe Dye Unknown )],
+  'upgrade_type' => [qw( Jewel Rune Sigil Universal )],
 );
 
 enum 'ItemType',          $enum_map{'item_type'};
@@ -260,11 +260,13 @@ enum 'DamageType',        $enum_map{'damage_type'};
 enum 'InfusionType',      $enum_map{'infusion_type'};
 enum 'InfusionSlotType',  $enum_map{'infusion_slot_type'};
 enum 'UnlockType',        $enum_map{'unlock_type'};
-enum 'UpgradeAType',      $enum_map{'upgrade_atype'};
+enum 'UpgradeType',       $enum_map{'upgrade_type'};
 
 
 has 'item_id'               => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'item_name'             => ( is => 'ro', isa => 'Str',            required => 1 );
+# "name" field broken by Feature Pack, hotfix coming soon, but until then we have to allow blank values
+#has 'item_name'             => ( is => 'ro', isa => 'Str',            required => 1 );
+has 'item_name'             => ( is => 'ro', isa => 'Str',          );
 has 'item_type'             => ( is => 'ro', isa => 'ItemType',       required => 1 );
 has 'level'                 => ( is => 'ro', isa => 'Int',            required => 1 );
 has 'rarity'                => ( is => 'ro', isa => 'ItemRarity',     required => 1 );
@@ -283,7 +285,7 @@ has 'infusion_slot_1_item'  => ( is => 'ro', isa => 'Int'           );
 has 'infusion_slot_2_type'  => ( is => 'ro', isa => 'Str'           );
 has 'infusion_slot_2_item'  => ( is => 'ro', isa => 'Int'           );
 has 'suffix_item_id'        => ( is => 'ro', isa => 'Str'           );
-has 'suffix_2_item_id'      => ( is => 'ro', isa => 'Str'           );
+has 'second_suffix_item_id' => ( is => 'ro', isa => 'Str'           );
 has 'armor_weight'          => ( is => 'ro', isa => 'ArmorWeight'   );
 has 'defense'               => ( is => 'ro', isa => 'Int'           );
 has 'armor_race'            => ( is => 'ro', isa => 'ArmorRace'     );
@@ -295,7 +297,7 @@ has 'unlock_type'           => ( is => 'ro', isa => 'UnlockType'    );
 has 'unlock_color_id'       => ( is => 'ro', isa => 'Str'           );
 has 'unlock_recipe_id'      => ( is => 'ro', isa => 'Str'           );
 has 'charges'               => ( is => 'ro', isa => 'Int'           );
-has 'upgrade_type'          => ( is => 'ro', isa => 'UpgradeAType'  );
+has 'upgrade_type'          => ( is => 'ro', isa => 'UpgradeType'   );
 has 'suffix'                => ( is => 'ro', isa => 'Str'           );
 has 'infusion_type'         => ( is => 'ro', isa => 'InfusionType'  );
 has 'rune_bonuses'          => ( is => 'ro', isa => 'ArrayRef[Str]' );
@@ -309,143 +311,169 @@ has 'raw_md5'               => ( is => 'ro', isa => 'Str', writer => '_set_md5' 
 around 'BUILDARGS', sub {
   my ($orig, $class, $args) = @_;
 
+  my $new_args;
+
   local $" = ','; #" # <-- this is to satisfy syntax highlighting that can't interpret $" as a variable name
 
-  # Renames and simple transforms (strip/convert newlines, etc.)
-  if(my $a = delete $args->{name}) { ($args->{item_name} = $a) =~ s/\n//g }
-  if(my $a = delete $args->{type}) { $args->{item_type} = $a }
-  if(my $a = delete $args->{description}) { ($args->{description} = $a) =~ s/\n/<br>/g }
-  if(my $a = delete $args->{icon_file_signature}) { $args->{icon_signature} = $a }
-  if(my $a = delete $args->{secondary_suffix_item_id}) { $args->{suffix_2_item_id} = $a }
-
-  if (my $tdata = delete $args->{type_data}) {
-    if(my $a = delete $tdata->{type}) { $args->{item_subtype} = $a }
-    if(my $a = delete $tdata->{suffix_item_id}) { $args->{suffix_item_id} = $a }
-    if(my $a = delete $tdata->{weight_class}) { $args->{armor_weight} = $a }
-    if(my $a = delete $tdata->{defense}) { $args->{defense} = $a }
-    if(my $a = delete $tdata->{size}) { $args->{bag_size} = $a }
-    if(my $a = delete $tdata->{duration_ms}) { $args->{food_duration_sec} = $a / 1000 }
-    if(my $a = delete $tdata->{description}) { ($args->{food_description} = $a) =~ s/\n/<br>/g }
-    if(my $a = delete $tdata->{unlock_type}) { $args->{unlock_type} = $a }
-    if(my $a = delete $tdata->{color_id}) { $args->{unlock_color_id} = $a }
-    if(my $a = delete $tdata->{recipe_id}) { $args->{unlock_recipe_id} = $a }
-    if(my $a = delete $tdata->{suffix}) { $args->{suffix} = $a }
-    if(my $a = delete $tdata->{no_sell_or_sort}) { $args->{invisible} = $a }
-    if(my $a = delete $tdata->{min_power}) { $args->{min_strength} = $a }
-    if(my $a = delete $tdata->{max_power}) { $args->{max_strength} = $a }
-    if(my $a = delete $tdata->{damage_type}) { $args->{damage_type} = $a }
-    if(my $a = delete $tdata->{infusion_slots}) { $args->{infusion_slots} = $a }
-    if(my $a = delete $tdata->{infusion_upgrade_flags}) { $args->{infusion_upgrade_flags} = $a }
-    if(my $a = delete $tdata->{flags}) { $args->{upgrade_flags} = $a }
-    if(my $a = delete $tdata->{bonuses}) { s/\n/<br>/g for @$a; $args->{rune_bonuses} = $a; }
-
-    if (my $infix = delete $tdata->{infix_upgrade}) {
-      if(my $a = delete $infix->{buff}->{skill_id})    { $args->{buff_skill_id} = $a }
-      if(my $a = delete $infix->{buff}->{description}) { ($args->{buff_desc} = $a) =~ s/\n/<br>/g }
-      if(my $attributes = delete $infix->{attributes}) {
-        if (scalar @$attributes > 0) {
-          foreach my $a (@$attributes) {
-            $args->{item_attributes}->{$a->{attribute}} = $a->{modifier};
-          }
-        }
-      }
-    }
-  }
-
-  # Validation of enumerated fields
-  _validate_enum($args, 'item_type');
-  _validate_enum($args, 'item_subtype');
-  _validate_enum($args, 'rarity');
-  _validate_enum($args, 'armor_weight');
-  _validate_enum($args, 'damage_type');
-  _validate_enum($args, 'unlock_type');
+  # Explicitly copy attributes from original $args to $new_args
+  # Perform some renames and data hygiene on the way
+  if(my $a = delete $args->{item_id}) { $new_args->{item_id} = $a }
+  #if(my $a = delete $args->{name}) { ($new_args->{item_name} = $a) =~ s/\n//g } else { $new_args->{item_name} = "[null]" }
+  if(defined(my $a = delete $args->{name})) { $new_args->{item_name} = $a }
+  if(my $a = delete $args->{type}) { $new_args->{item_type} = $a }
+  if(defined(my $a = delete $args->{level})) { $new_args->{level} = $a }
+  if(my $a = delete $args->{rarity}) { $new_args->{rarity} = $a }
+  if(defined(my $a = delete $args->{vendor_value})) { $new_args->{vendor_value} = $a }
+  if(my $a = delete $args->{icon_file_id}) { $new_args->{icon_file_id} = $a }
+  if(my $a = delete $args->{icon_file_signature}) { $new_args->{icon_signature} = $a }
+  if(my $a = delete $args->{description}) { ($new_args->{description} = $a) =~ s/\n/<br>/g }
 
   # Restrictions - returned as a list, only single value is meaningful
   # Two items (17012, 18165) have restrictions = [Guardian,Warrior]
   # Otherwise this element is only used to define racial armor restrictions
   if(my $r = delete $args->{restrictions}) {
     if (@$r == 1 && in($r->[0], $enum_map{'armor_race'})) {
-      $args->{armor_race} = $r->[0];
+      $new_args->{armor_race} = $r->[0];
     } elsif (@$r > 0) {
-      $args->{item_warnings} .= "Unrecognized restrictions [@$r]\n";
-    }
-  }
-
-  # Infusion slots - returned as a list of 'flag' lists
-  #   'flags' list has never been seen with more than 1 value
-  #   Agony type slots are returned as an empty 'flags' list, we assume all empty lists are Agony
-  if(my $i = delete $args->{infusion_slots}) {
-    my $x = 1;
-    foreach my $s (@$i) {
-      my $f = $s->{flags};
-      if (@$f == 1 && in($f->[0], $enum_map{'infusion_slot_type'})) {
-        $args->{"infusion_slot_".$x."_type"} = $f->[0];
-      } elsif (@$f == 0) {
-        $args->{"infusion_slot_".$x."_type"} = 'Agony';
-      } else {
-        $args->{item_warnings} .= "Unrecognized infusion_slot flags: [@$f]\n";
-      }
-      if (my $slot_item_id = delete $s->{item_id}) {
-        $args->{"infusion_slot_".$x."_item"} = $slot_item_id;
-      }
-      $x++;
-    }
-  }
-
-  # Infusion upgrade flags - returned as a list, only single value is meaningful
-  # Omni infusions are returned as a list of ['Offense', 'Defense', 'Utility']
-  #   so we translate that to a single value
-  # Agony infusions have an empty list and are called '+<x> Agony Infusion'
-  if(my $iuf = delete $args->{infusion_upgrade_flags}) {
-    @$iuf = sort @$iuf;
-    if (@$iuf == 1 && in($iuf->[0], $enum_map{'infusion_slot_type'})) {
-      $args->{infusion_type} = $iuf->[0];
-    } elsif (@$iuf == 3 && array_match( $iuf, $enum_map{'infusion_slot_type'})) {
-      $args->{infusion_type} = 'Omni';
-    } elsif (@$iuf == 0 && $args->{item_name} =~ /Agony Infusion/) {
-      $args->{infusion_type} = 'Agony';
-    } elsif (@$iuf > 0) {
-      $args->{item_warnings} .= "Unrecognized infusion_upgrade_flags [@$iuf]\n";
-    }
-  }
-
-  # UpgradeComponent flags
-  if(my $uf = delete $args->{upgrade_flags}) {
-    # Making assumptions about the only valid flag combinations
-    for (scalar @$uf) {
-      if ($_ == 1) {
-        $args->{upgrade_type} = 'Trinket';
-      } elsif ($_ == 3) {
-        $args->{upgrade_type} = 'Armor';
-      } elsif ($_ == 19) {
-        $args->{upgrade_type} = 'Weapon';
-      } elsif ($_ == 23) {
-        $args->{upgrade_type} = 'All';
-      } else {
-        $args->{item_warnings} .= "Unrecognized upgrade flags [@$uf]\n";
-      }
+      $new_args->{item_warnings} .= "Unrecognized restrictions [@$r]\n";
     }
   }
 
   # Transform from array[str] to hash[bool]
   if(my $gametypes = delete $args->{game_types}) {
-    $args->{game_type_flags} = { map { $_ => 0 } @_default_gametypes };
+    $new_args->{game_type_flags} = { map { $_ => 0 } @_default_gametypes };
     foreach my $g (@$gametypes) {
-      $args->{item_warnings} .= "Unrecognized game_type [$g]\n" unless in($g, \@_default_gametypes);
-      $args->{game_type_flags}->{$g} = 1;
+      $new_args->{item_warnings} .= "Unrecognized game_type [$g]\n" unless in($g, \@_default_gametypes);
+      $new_args->{game_type_flags}->{$g} = 1;
     }
   }
 
   # Transform from array[str] to hash[bool]
   if(my $flags = delete $args->{flags}) {
-    $args->{item_flags} = { map { $_ => 0 } @_default_flags };
+    $new_args->{item_flags} = { map { $_ => 0 } @_default_flags };
     foreach my $f (@$flags) {
-      $args->{item_warnings} .= "Unrecognized item flag [$f]\n" unless in($f, \@_default_flags);
-      $args->{item_flags}->{$f} = 1;
+      $new_args->{item_warnings} .= "Unrecognized item flag [$f]\n" unless in($f, \@_default_flags);
+      $new_args->{item_flags}->{$f} = 1;
     }
   }
 
-  $class->$orig($args);
+  # Process type-specific data
+  if (my $tdata = delete $args->{type_data}) {
+    # Explicitly copy attributes from original $args->{type_date} to $new_args
+    # Perform some renames and data hygiene on the way
+    if(my $a = delete $tdata->{type}) { $new_args->{item_subtype} = $a }
+    if(my $a = delete $tdata->{suffix_item_id}) { $new_args->{suffix_item_id} = $a }
+    if(my $a = delete $tdata->{weight_class}) { $new_args->{armor_weight} = $a }
+    if(my $a = delete $tdata->{defense}) { $new_args->{defense} = $a }
+    if(my $a = delete $tdata->{size}) { $new_args->{bag_size} = $a }
+    if(my $a = delete $tdata->{duration_ms}) { $new_args->{food_duration_sec} = $a / 1000 }
+    if(my $a = delete $tdata->{description}) { ($new_args->{food_description} = $a) =~ s/\n/<br>/g }
+    if(my $a = delete $tdata->{unlock_type}) { $new_args->{unlock_type} = $a }
+    if(my $a = delete $tdata->{color_id}) { $new_args->{unlock_color_id} = $a }
+    if(my $a = delete $tdata->{recipe_id}) { $new_args->{unlock_recipe_id} = $a }
+    if(my $a = delete $tdata->{charges}) { $new_args->{charges} = $a }
+    if(my $a = delete $tdata->{suffix}) { $new_args->{suffix} = $a }
+    if(my $a = delete $tdata->{no_sell_or_sort}) { $new_args->{invisible} = $a }
+    if(my $a = delete $tdata->{min_power}) { $new_args->{min_strength} = $a }
+    if(my $a = delete $tdata->{max_power}) { $new_args->{max_strength} = $a }
+    if(my $a = delete $tdata->{damage_type}) { $new_args->{damage_type} = $a }
+    if(my $a = delete $tdata->{bonuses}) { s/\n/<br>/g for @$a; $new_args->{rune_bonuses} = $a; }
+    if(my $a = delete $tdata->{suffix_item_id}) { $new_args->{suffix_item_id} = $a }
+    if(my $a = delete $tdata->{secondary_suffix_item_id}) { $new_args->{second_suffix_item_id} = $a }
+
+    if (my $infix = delete $tdata->{infix_upgrade}) {
+      if(my $a = delete $infix->{buff}->{skill_id})    { $new_args->{buff_skill_id} = $a }
+      if(my $a = delete $infix->{buff}->{description}) { ($new_args->{buff_desc} = $a) =~ s/\n/<br>/g }
+      if(my $attributes = delete $infix->{attributes}) {
+        if (scalar @$attributes > 0) {
+          foreach my $a (@$attributes) {
+            $new_args->{item_attributes}->{$a->{attribute}} = $a->{modifier};
+          }
+        }
+      }
+    }
+
+    # Infusion slots - returned as a list of 'flag' lists
+    #   'flags' list has never been seen with more than 1 value
+    #   Agony type slots are returned as an empty 'flags' list, we assume all empty lists are Agony
+    if(my $i = delete $tdata->{infusion_slots}) {
+      my $x = 1;
+      foreach my $s (@$i) {
+        my $f = $s->{flags};
+        if (@$f == 1 && in($f->[0], $enum_map{'infusion_slot_type'})) {
+          $new_args->{"infusion_slot_".$x."_type"} = $f->[0];
+        } elsif (@$f == 0) {
+          $new_args->{"infusion_slot_".$x."_type"} = 'Agony';
+        } else {
+          $new_args->{item_warnings} .= "Unrecognized infusion_slot flags: [@$f]\n";
+        }
+        if (my $slot_item_id = delete $s->{item_id}) {
+          $new_args->{"infusion_slot_".$x."_item"} = $slot_item_id;
+        }
+        $x++;
+      }
+    }
+
+    # Infusion upgrade flags - returned as a list, only single value is meaningful
+    # Omni infusions are returned as a list of ['Offense', 'Defense', 'Utility']
+    #   so we translate that to a single value
+    # Agony infusions have an empty list and are called '+<x> Agony Infusion'
+    if(my $iuf = delete $tdata->{infusion_upgrade_flags}) {
+      @$iuf = sort @$iuf;
+      if (@$iuf == 1 && in($iuf->[0], $enum_map{'infusion_slot_type'})) {
+        $new_args->{infusion_type} = $iuf->[0];
+      } elsif (@$iuf == 3 && array_match( $iuf, $enum_map{'infusion_slot_type'})) {
+        $new_args->{infusion_type} = 'Omni';
+      } elsif (@$iuf == 0 && $new_args->{item_name} =~ /Agony Infusion/) {
+        $new_args->{infusion_type} = 'Agony';
+      } elsif (@$iuf > 0) {
+        $new_args->{item_warnings} .= "Unrecognized infusion_upgrade_flags [@$iuf]\n";
+      }
+    }
+
+    # Flags - only on UpgradeComponent, returned as list of equipment subtypes
+    # The only valid combinations are:
+    #   ["Trinket"] = Jewel
+    #   ["HeavyArmor","LightArmor","MediumArmor"] = Rune
+    #   [<all 19 Weapon subtypes>] = Sigil
+    #   [<all 23 of the above>] = Universal
+    if(my $uf = delete $tdata->{flags}) {
+      # Making assumptions about the only valid flag combinations
+      for (scalar @$uf) {
+        if ($_ == 1) {
+          $new_args->{upgrade_type} = 'Jewel';
+        } elsif ($_ == 3) {
+          $new_args->{upgrade_type} = 'Rune';
+        } elsif ($_ == 19) {
+          $new_args->{upgrade_type} = 'Sigil';
+        } elsif ($_ == 23) {
+          $new_args->{upgrade_type} = 'Universal';
+        } else {
+          $new_args->{item_warnings} .= "Unrecognized upgrade flags [@$uf]\n";
+        }
+      }
+    }
+
+    # If there are any attributes left on the original $args->{type_data}, list them as warnings
+    for my $a (keys %$tdata) {
+      $new_args->{item_warnings} .= "Unprocessed type attribute [$a]\n";
+    }
+  }
+
+  # Validation of enumerated fields
+  _validate_enum($new_args, 'item_type');
+  _validate_enum($new_args, 'item_subtype');
+  _validate_enum($new_args, 'rarity');
+  _validate_enum($new_args, 'armor_weight');
+  _validate_enum($new_args, 'damage_type');
+  _validate_enum($new_args, 'unlock_type');
+
+  # If there are any attributes left on the original $args, list them as warnings
+  for my $a (keys %$args) {
+    $new_args->{item_warnings} .= "Unprocessed attribute [$a]\n";
+  }
+
+  $class->$orig($new_args);
 };
 
 # Method to perform "soft" validations on enumerated fields
