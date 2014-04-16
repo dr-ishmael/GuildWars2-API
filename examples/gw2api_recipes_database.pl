@@ -113,12 +113,12 @@ if ($proc_recipes == 0) {
   say $proc_recipes . " new recipes to be processed.";
 }
 
-#say "Redirecting STDERR to gw2api.err; please check this file for any warnings or errors generated during the process.";
-#open(my $olderr, ">&", \*STDERR) or die "Can't dup STDERR: $!";
-#open(STDERR, ">", ".\\gw2api.err") or die "Can't redirect STDERR: $!";
-#select STDERR; $| = 1;  # make unbuffered
-#
-#select STDOUT;
+say "Redirecting STDERR to gw2api.err; please check this file for any warnings or errors generated during the process.";
+open(my $olderr, ">&", \*STDERR) or die "Can't dup STDERR: $!";
+open(STDERR, ">", ".\\gw2api.err") or die "Can't redirect STDERR: $!";
+select STDERR; $| = 1;  # make unbuffered
+
+select STDOUT;
 
 say "Ready to begin processing.";
 

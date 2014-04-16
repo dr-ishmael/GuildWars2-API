@@ -263,44 +263,48 @@ enum 'UnlockType',        $enum_map{'unlock_type'};
 enum 'UpgradeAType',      $enum_map{'upgrade_atype'};
 
 
-has 'item_id'           => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'item_name'         => ( is => 'ro', isa => 'Str',            required => 1 );
-has 'item_type'         => ( is => 'ro', isa => 'ItemType',       required => 1 );
-has 'level'             => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'rarity'            => ( is => 'ro', isa => 'ItemRarity',     required => 1 );
-has 'vendor_value'      => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'game_type_flags'   => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
-has 'item_flags'        => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
-has 'icon_file_id'      => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'icon_signature'    => ( is => 'ro', isa => 'Str',            required => 1 );
-has 'description'       => ( is => 'ro', isa => 'Str'           );
-has 'item_subtype'      => ( is => 'ro', isa => 'ItemSubtype'   );
-has 'item_attributes'   => ( is => 'ro', isa => 'HashRef[Int]'  );
-has 'buff_skill_id'     => ( is => 'ro', isa => 'Int'           );
-has 'buff_desc'         => ( is => 'ro', isa => 'Str'           );
-has 'infusion_slots'    => ( is => 'ro', isa => 'ArrayRef[Str]' );
-has 'suffix_item_id'    => ( is => 'ro', isa => 'Str'           );
-has 'armor_weight'      => ( is => 'ro', isa => 'ArmorWeight'   );
-has 'defense'           => ( is => 'ro', isa => 'Int'           );
-has 'armor_race'        => ( is => 'ro', isa => 'ArmorRace'     );
-has 'bag_size'          => ( is => 'ro', isa => 'Int'           );
-has 'invisible'         => ( is => 'ro', isa => 'Bool'          );
-has 'food_duration_sec' => ( is => 'ro', isa => 'Str'           );
-has 'food_description'  => ( is => 'ro', isa => 'Str'           );
-has 'unlock_type'       => ( is => 'ro', isa => 'UnlockType'    );
-has 'unlock_color_id'   => ( is => 'ro', isa => 'Str'           );
-has 'unlock_recipe_id'  => ( is => 'ro', isa => 'Str'           );
-has 'charges'           => ( is => 'ro', isa => 'Int'           );
-has 'upgrade_type'      => ( is => 'ro', isa => 'UpgradeAType'  );
-has 'suffix'            => ( is => 'ro', isa => 'Str'           );
-has 'infusion_type'     => ( is => 'ro', isa => 'InfusionType'  );
-has 'rune_bonuses'      => ( is => 'ro', isa => 'ArrayRef[Str]' );
-has 'damage_type'       => ( is => 'ro', isa => 'DamageType'    );
-has 'min_strength'      => ( is => 'ro', isa => 'Int'           );
-has 'max_strength'      => ( is => 'ro', isa => 'Int'           );
-has 'raw_json'          => ( is => 'ro', isa => 'Str', writer => '_set_json' );
-has 'raw_md5'           => ( is => 'ro', isa => 'Str', writer => '_set_md5'  );
-has 'item_warnings'     => ( is => 'ro', isa => 'Str'           );
+has 'item_id'               => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'item_name'             => ( is => 'ro', isa => 'Str',            required => 1 );
+has 'item_type'             => ( is => 'ro', isa => 'ItemType',       required => 1 );
+has 'level'                 => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'rarity'                => ( is => 'ro', isa => 'ItemRarity',     required => 1 );
+has 'vendor_value'          => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'game_type_flags'       => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
+has 'item_flags'            => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
+has 'icon_file_id'          => ( is => 'ro', isa => 'Int',            required => 1 );
+has 'icon_signature'        => ( is => 'ro', isa => 'Str',            required => 1 );
+has 'description'           => ( is => 'ro', isa => 'Str'           );
+has 'item_subtype'          => ( is => 'ro', isa => 'ItemSubtype'   );
+has 'item_attributes'       => ( is => 'ro', isa => 'HashRef[Int]'  );
+has 'buff_skill_id'         => ( is => 'ro', isa => 'Int'           );
+has 'buff_desc'             => ( is => 'ro', isa => 'Str'           );
+has 'infusion_slot_1_type'  => ( is => 'ro', isa => 'Str'           );
+has 'infusion_slot_1_item'  => ( is => 'ro', isa => 'Int'           );
+has 'infusion_slot_2_type'  => ( is => 'ro', isa => 'Str'           );
+has 'infusion_slot_2_item'  => ( is => 'ro', isa => 'Int'           );
+has 'suffix_item_id'        => ( is => 'ro', isa => 'Str'           );
+has 'suffix_2_item_id'      => ( is => 'ro', isa => 'Str'           );
+has 'armor_weight'          => ( is => 'ro', isa => 'ArmorWeight'   );
+has 'defense'               => ( is => 'ro', isa => 'Int'           );
+has 'armor_race'            => ( is => 'ro', isa => 'ArmorRace'     );
+has 'bag_size'              => ( is => 'ro', isa => 'Int'           );
+has 'invisible'             => ( is => 'ro', isa => 'Bool'          );
+has 'food_duration_sec'     => ( is => 'ro', isa => 'Str'           );
+has 'food_description'      => ( is => 'ro', isa => 'Str'           );
+has 'unlock_type'           => ( is => 'ro', isa => 'UnlockType'    );
+has 'unlock_color_id'       => ( is => 'ro', isa => 'Str'           );
+has 'unlock_recipe_id'      => ( is => 'ro', isa => 'Str'           );
+has 'charges'               => ( is => 'ro', isa => 'Int'           );
+has 'upgrade_type'          => ( is => 'ro', isa => 'UpgradeAType'  );
+has 'suffix'                => ( is => 'ro', isa => 'Str'           );
+has 'infusion_type'         => ( is => 'ro', isa => 'InfusionType'  );
+has 'rune_bonuses'          => ( is => 'ro', isa => 'ArrayRef[Str]' );
+has 'damage_type'           => ( is => 'ro', isa => 'DamageType'    );
+has 'min_strength'          => ( is => 'ro', isa => 'Int'           );
+has 'max_strength'          => ( is => 'ro', isa => 'Int'           );
+has 'item_warnings'         => ( is => 'ro', isa => 'Str'           );
+has 'raw_json'              => ( is => 'ro', isa => 'Str', writer => '_set_json' );
+has 'raw_md5'               => ( is => 'ro', isa => 'Str', writer => '_set_md5'  );
 
 around 'BUILDARGS', sub {
   my ($orig, $class, $args) = @_;
@@ -312,6 +316,7 @@ around 'BUILDARGS', sub {
   if(my $a = delete $args->{type}) { $args->{item_type} = $a }
   if(my $a = delete $args->{description}) { ($args->{description} = $a) =~ s/\n/<br>/g }
   if(my $a = delete $args->{icon_file_signature}) { $args->{icon_signature} = $a }
+  if(my $a = delete $args->{secondary_suffix_item_id}) { $args->{suffix_2_item_id} = $a }
 
   if (my $tdata = delete $args->{type_data}) {
     if(my $a = delete $tdata->{type}) { $args->{item_subtype} = $a }
@@ -370,16 +375,20 @@ around 'BUILDARGS', sub {
   #   'flags' list has never been seen with more than 1 value
   #   Agony type slots are returned as an empty 'flags' list, we assume all empty lists are Agony
   if(my $i = delete $args->{infusion_slots}) {
-    $args->{infusion_slots} = []; # reinitialize to empty list
+    my $x = 1;
     foreach my $s (@$i) {
       my $f = $s->{flags};
       if (@$f == 1 && in($f->[0], $enum_map{'infusion_slot_type'})) {
-        push $args->{infusion_slots}, $f->[0];
+        $args->{"infusion_slot_".$x."_type"} = $f->[0];
       } elsif (@$f == 0) {
-        push $args->{infusion_slots}, 'Agony';
+        $args->{"infusion_slot_".$x."_type"} = 'Agony';
       } else {
         $args->{item_warnings} .= "Unrecognized infusion_slot flags: [@$f]\n";
       }
+      if (my $slot_item_id = delete $s->{item_id}) {
+        $args->{"infusion_slot_".$x."_item"} = $slot_item_id;
+      }
+      $x++;
     }
   }
 

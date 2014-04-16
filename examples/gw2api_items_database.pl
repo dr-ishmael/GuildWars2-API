@@ -191,20 +191,14 @@ while (! $TERM) {
     my @ids_to_process = splice @proc_item_ids, 0, 10;
     $work_queues{$tid}->enqueue(@ids_to_process);
 
-    # Take note of new/updated item_ids passed back from threads
-    push @new_item_arr, $new_q->dequeue() while ($new_q->pending());
-    push @updt_item_arr, $updt_q->dequeue() while ($updt_q->pending());
-
     $i += scalar @ids_to_process;
     $next_update = $progress->update($i)
       if $i >= $next_update;
-
-    #last if $i >= 200;
 }
 
 # Take note of new/updated item_ids passed back from threads
-push @new_item_arr, $new_q->dequeue() while ($new_q->pending());
-push @updt_item_arr, $updt_q->dequeue() while ($updt_q->pending());
+push(@new_item_arr, $new_q->dequeue()) while ($new_q->pending());
+push(@updt_item_arr, $updt_q->dequeue()) while ($updt_q->pending());
 
 $progress->update($tot_items)
   if $tot_items >= $next_update;
@@ -334,8 +328,8 @@ sub worker
 
   # Upsert a new or changed item to the data table
   my $sth_data_upsert = $dbh->prepare('
-      insert into item_tb (item_id, item_name, item_type, item_subtype, item_level, item_rarity, item_description, vendor_value, game_type_activity, game_type_dungeon, game_type_pve, game_type_pvp, game_type_pvplobby, game_type_wvw, flag_accountbound, flag_hidesuffix, flag_nomysticforge, flag_nosalvage, flag_nosell, flag_notupgradeable, flag_nounderwater, flag_soulbindonacquire, flag_soulbindonuse, flag_unique, item_file_id, item_file_signature, equip_prefix, equip_infusion_slot1, equip_infusion_slot2, suffix_item_id, buff_skill_id, buff_description, armor_class, armor_race, bag_size, bag_invisible, food_duration_sec, food_description, tool_charges, unlock_type, unlock_color_id, unlock_recipe_id, upgrade_type, upgrade_suffix, upgrade_infusion_type, weapon_damage_type, item_warnings)
-      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      insert into item_tb (item_id, item_name, item_type, item_subtype, item_level, item_rarity, item_description, vendor_value, game_type_activity, game_type_dungeon, game_type_pve, game_type_pvp, game_type_pvplobby, game_type_wvw, flag_accountbound, flag_hidesuffix, flag_nomysticforge, flag_nosalvage, flag_nosell, flag_notupgradeable, flag_nounderwater, flag_soulbindonacquire, flag_soulbindonuse, flag_unique, item_file_id, item_file_signature, equip_prefix, equip_infusion_slot_1_type, equip_infusion_slot_1_item_id, equip_infusion_slot_2_type, equip_infusion_slot_2_item_id, suffix_item_id, suffix_2_item_id, buff_skill_id, buff_description, armor_class, armor_race, bag_size, bag_invisible, food_duration_sec, food_description, tool_charges, unlock_type, unlock_color_id, unlock_recipe_id, upgrade_type, upgrade_suffix, upgrade_infusion_type, weapon_damage_type, item_warnings)
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       on duplicate key update
         item_name=VALUES(item_name)
        ,item_type=VALUES(item_type)
@@ -363,9 +357,12 @@ sub worker
        ,item_file_id=VALUES(item_file_id)
        ,item_file_signature=VALUES(item_file_signature)
        ,equip_prefix=VALUES(equip_prefix)
-       ,equip_infusion_slot1=VALUES(equip_infusion_slot1)
-       ,equip_infusion_slot2=VALUES(equip_infusion_slot2)
+       ,equip_infusion_slot_1_type=VALUES(equip_infusion_slot_1_type)
+       ,equip_infusion_slot_1_item_id=VALUES(equip_infusion_slot_1_item_id)
+       ,equip_infusion_slot_2_type=VALUES(equip_infusion_slot_2_type)
+       ,equip_infusion_slot_2_item_id=VALUES(equip_infusion_slot_2_item_id)
        ,suffix_item_id=VALUES(suffix_item_id)
+       ,suffix_2_item_id=VALUES(suffix_2_item_id)
        ,buff_skill_id=VALUES(buff_skill_id)
        ,buff_description=VALUES(buff_description)
        ,armor_class=VALUES(armor_class)
@@ -392,6 +389,14 @@ sub worker
 
   # Insert rune entries
   my $sth_insert_rune = $dbh->prepare('insert into item_rune_bonus_tb values (?, ?, ?)')
+    or die "Can't prepare statement: $DBI::errstr";
+
+  # Delete any existing entries on the attribute table
+  my $sth_delete_attr = $dbh->prepare('delete from item_attribute_tb where item_id = ?')
+    or die "Can't prepare statement: $DBI::errstr";
+
+  # Insert attribute entries
+  my $sth_insert_attr = $dbh->prepare('insert into item_attribute_tb values (?, ?, ?)')
     or die "Can't prepare statement: $DBI::errstr";
 
   say $log "\tSQL statements prepared." if $VERBOSE;
@@ -472,15 +477,10 @@ sub worker
       say $log "\tIndex update complete." if $VERBOSE;
 
       my $item_prefix;
-      my $infusion_slot1;
-      my $infusion_slot2;
 
       if (in($item->item_type, [ 'Armor', 'Back', 'Trinket', 'Weapon', ] ) ) {
         say $log "Item is equippable, determining prefix..." if $VERBOSE;
         $item_prefix = $api->prefix_lookup($item);
-        if ($item->can('infusion_slots')) {
-          ($infusion_slot1, $infusion_slot2) = @{$item->{infusion_slots}};
-        }
         say $log "\tItem prefix is $item_prefix." if $VERBOSE;
       }
 
@@ -515,9 +515,12 @@ sub worker
         ,$item->icon_file_id
         ,$item->icon_signature
         ,$item_prefix
-        ,$infusion_slot1
-        ,$infusion_slot2
+        ,$item->infusion_slot_1_type
+        ,$item->infusion_slot_1_item
+        ,$item->infusion_slot_2_type
+        ,$item->infusion_slot_2_item
         ,$item->suffix_item_id
+        ,$item->suffix_2_item_id
         ,$item->buff_skill_id
         ,$item->buff_desc
         ,$item->armor_weight
@@ -553,6 +556,24 @@ sub worker
           say $log "\tComplete." if $VERBOSE;
         }
         say $log "\tAll rune data inserted." if $VERBOSE;
+      }
+
+      if (ref($item->item_attributes) eq 'HASH') {
+        say $log "Item has attributes. Deleting existing attribute data." if $VERBOSE;
+        $sth_delete_attr->execute($item_id)
+          or die "Can't execute statement: $DBI::errstr";
+        say $log "\tAttribute data deleted." if $VERBOSE;
+
+        my $ia = $item->item_attributes;
+
+        for my $a (keys %$ia) {
+          say $log "Inserting attrubte $a..." if $VERBOSE;
+          my $v = $ia->{$a};
+          $sth_insert_attr->execute($item_id, $a, $v)
+            or die "Can't execute statement: $DBI::errstr";
+          say $log "\tComplete." if $VERBOSE;
+        }
+        say $log "\tAll attribute data inserted." if $VERBOSE;
       }
     }
     say $log "\tCompleted processing item $item_id." if $VERBOSE;
