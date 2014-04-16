@@ -191,20 +191,14 @@ while (! $TERM) {
     my @ids_to_process = splice @proc_recipe_ids, 0, 10;
     $work_queues{$tid}->enqueue(@ids_to_process);
 
-    # Take note of new/updated recipe_ids passed back from threads
-    push @new_recipe_arr, $new_q->dequeue() while ($new_q->pending());
-    push @updt_recipe_arr, $updt_q->dequeue() while ($updt_q->pending());
-
     $i += scalar @ids_to_process;
     $next_update = $progress->update($i)
       if $i >= $next_update;
-
-    #last if $i >= 200;
 }
 
 # Take note of new/updated recipe_ids passed back from threads
-push @new_recipe_arr, $new_q->dequeue() while ($new_q->pending());
-push @updt_recipe_arr, $updt_q->dequeue() while ($updt_q->pending());
+while ($new_q->pending() > 0) { push @new_recipe_arr, $new_q->dequeue(); }
+while ($updt_q->pending() > 0) { push @updt_recipe_arr, $updt_q->dequeue(); }
 
 $progress->update($tot_recipes)
   if $tot_recipes >= $next_update;

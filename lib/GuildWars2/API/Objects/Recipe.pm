@@ -207,13 +207,22 @@ has 'recipe_warnings'   => ( is => 'ro', isa => 'Str' );
 around 'BUILDARGS', sub {
   my ($orig, $class, $args) = @_;
 
+  my $new_args;
+
+  if(my $t = delete $args->{recipe_id}) { $new_args->{recipe_id} = $t; }
+  if(my $t = delete $args->{type}) { $new_args->{recipe_type} = $t; }
+  if(my $t = delete $args->{output_item_id}) { $new_args->{output_item_id} = $t; }
+  if(my $t = delete $args->{output_item_count}) { $new_args->{output_item_count} = $t; }
+  if(defined(my $t = delete $args->{min_rating})) { $new_args->{min_rating} = $t; }
+  if(my $t = delete $args->{time_to_craft_ms}) { $new_args->{time_to_craft_ms} = $t; }
+
   if(my $disciplines = delete $args->{disciplines}) {
-    $args->{disciplines} = { map { $_ => 0 } @_default_disciplines };
+    $new_args->{disciplines} = { map { $_ => 0 } @_default_disciplines };
     foreach my $d (@$disciplines) {
       if (in($d, \@_default_disciplines)) {
-        $args->{disciplines}->{$d} = 1;
+        $new_args->{disciplines}->{$d} = 1;
       } else {
-        $args->{recipe_warnings} .= "Unrecognized discipline [$d]\n";
+        $new_args->{recipe_warnings} .= "Unrecognized discipline [$d]\n";
       }
     }
   }
@@ -221,30 +230,33 @@ around 'BUILDARGS', sub {
   if(my $flags = delete $args->{flags}) {
     if (@$flags == 1 && in($flags->[0], [ "AutoLearned", "LearnedFromItem" ])) {
       my $f = $flags->[0];
-      $args->{_unlock_method} =
+      $new_args->{_unlock_method} =
           $f eq "AutoLearned" ? AUTO_IDX
         : $f eq "LearnedFromItem" ? ITEM_IDX
         : 0;
     } elsif (@$flags == 0) {
-      $args->{_unlock_method} = DISC_IDX;
+      $new_args->{_unlock_method} = DISC_IDX;
     } else {
-      $args->{_unlock_method} = 0;
-      $args->{recipe_warnings} .= "Unrecognized flags [@$flags]\n";
+      $new_args->{_unlock_method} = 0;
+      $new_args->{recipe_warnings} .= "Unrecognized flags [@$flags]\n";
     }
   }
 
   if(my $ingredients = delete $args->{ingredients}) {
     foreach my $i (@$ingredients) {
-      $args->{ingredients}->{$i->{item_id}} = $i->{count};
+      $new_args->{ingredients}->{$i->{item_id}} = $i->{count};
     }
   }
 
-  if(my $t = delete $args->{type}) { $args->{recipe_type} = $t; }
-
   # Validation of enumerated fields
-  _validate_enum($args, 'recipe_type');
+  _validate_enum($new_args, 'recipe_type');
 
-  $class->$orig($args);
+  # If there are any attributes left on the original $args, list them as warnings
+  for my $a (keys %$args) {
+    $new_args->{recipe_warnings} .= "Unprocessed attribute [$a]\n";
+  }
+
+  $class->$orig($new_args);
 };
 
 # Method to perform "soft" validations on enumerated fields
