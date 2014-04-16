@@ -106,7 +106,7 @@ $proc_items = scalar @proc_item_ids;
 if ($proc_items == 0) {
   # Short-circuit exit if nothing new to process
   say "No new items to process; script will now exit";
-  #exit(0);
+  exit(0);
 } elsif ($proc_items == $tot_items) {
   say "All items will be re-processed.";
 } else{
