@@ -39,8 +39,8 @@ CREATE TABLE `item_tb` (
   `game_type_pvp` tinyint(1) unsigned NOT NULL DEFAULT '0',
   `game_type_pvplobby` tinyint(1) unsigned NOT NULL DEFAULT '0',
   `game_type_wvw` tinyint(1) unsigned NOT NULL DEFAULT '0',
-  `flag_accountbound` tinyint(1) unsigned NOT NULL DEFAULT '0',
   `flag_accountbindonuse` tinyint(1) unsigned NOT NULL DEFAULT '0',
+  `flag_accountbound` tinyint(1) unsigned NOT NULL DEFAULT '0',
   `flag_hidesuffix` tinyint(1) unsigned NOT NULL DEFAULT '0',
   `flag_nomysticforge` tinyint(1) unsigned NOT NULL DEFAULT '0',
   `flag_nosalvage` tinyint(1) unsigned NOT NULL DEFAULT '0',
@@ -52,6 +52,7 @@ CREATE TABLE `item_tb` (
   `flag_unique` tinyint(1) unsigned NOT NULL DEFAULT '0',
   `item_file_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `item_file_signature` char(40) NOT NULL DEFAULT '0',
+  `default_skin` mediumint(9) DEFAULT NULL,
   `equip_prefix` varchar(32) DEFAULT NULL,
   `equip_infusion_slot_1_type` varchar(32) DEFAULT NULL,
   `equip_infusion_slot_1_item_id` mediumint(8) unsigned DEFAULT NULL,
@@ -89,4 +90,4 @@ CREATE TABLE `item_tb` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-04-13 11:10:07
+-- Dump completed on 2014-04-18 19:13:53

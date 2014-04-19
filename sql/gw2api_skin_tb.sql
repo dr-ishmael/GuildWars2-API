@@ -18,19 +18,28 @@ USE `gw2api`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `build_tb`
+-- Table structure for table `skin_tb`
 --
 
-DROP TABLE IF EXISTS `build_tb`;
+DROP TABLE IF EXISTS `skin_tb`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `build_tb` (
-  `build_id` mediumint(8) unsigned NOT NULL,
-  `build_dt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `items_processed` char(1) NOT NULL DEFAULT 'N',
-  `recipes_processed` char(1) NOT NULL DEFAULT 'N',
-  `skins_processed` char(1) NOT NULL DEFAULT 'N',
-  PRIMARY KEY (`build_id`)
+CREATE TABLE `skin_tb` (
+  `skin_id` mediumint(8) unsigned NOT NULL,
+  `skin_name` varchar(128) NOT NULL,
+  `skin_type` varchar(32) NOT NULL,
+  `skin_subtype` varchar(32) DEFAULT NULL,
+  `skin_description` varchar(1024) DEFAULT NULL,
+  `flag_hideiflocked` tinyint(1) NOT NULL,
+  `flag_nocost` tinyint(1) NOT NULL,
+  `flag_showinwardrobe` tinyint(1) NOT NULL,
+  `skin_file_id` mediumint(9) NOT NULL,
+  `skin_file_signature` char(40) NOT NULL,
+  `armor_race` varchar(32) DEFAULT NULL,
+  `armor_class` varchar(32) DEFAULT NULL,
+  `weapon_damage_type` varchar(32) DEFAULT NULL,
+  `skin_warnings` varchar(1024) DEFAULT NULL,
+  PRIMARY KEY (`skin_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -43,4 +52,4 @@ CREATE TABLE `build_tb` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-04-18 19:13:52
+-- Dump completed on 2014-04-18 19:13:53

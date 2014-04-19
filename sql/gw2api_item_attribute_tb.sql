@@ -18,19 +18,17 @@ USE `gw2api`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `build_tb`
+-- Table structure for table `item_attribute_tb`
 --
 
-DROP TABLE IF EXISTS `build_tb`;
+DROP TABLE IF EXISTS `item_attribute_tb`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `build_tb` (
-  `build_id` mediumint(8) unsigned NOT NULL,
-  `build_dt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `items_processed` char(1) NOT NULL DEFAULT 'N',
-  `recipes_processed` char(1) NOT NULL DEFAULT 'N',
-  `skins_processed` char(1) NOT NULL DEFAULT 'N',
-  PRIMARY KEY (`build_id`)
+CREATE TABLE `item_attribute_tb` (
+  `item_id` mediumint(8) unsigned NOT NULL,
+  `attribute_name` varchar(32) NOT NULL,
+  `attribute_value` smallint(5) NOT NULL,
+  PRIMARY KEY (`item_id`,`attribute_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

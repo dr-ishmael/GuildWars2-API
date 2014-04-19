@@ -18,19 +18,22 @@ USE `gw2api`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `build_tb`
+-- Table structure for table `skin_index_log_tb`
 --
 
-DROP TABLE IF EXISTS `build_tb`;
+DROP TABLE IF EXISTS `skin_index_log_tb`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `build_tb` (
-  `build_id` mediumint(8) unsigned NOT NULL,
-  `build_dt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `items_processed` char(1) NOT NULL DEFAULT 'N',
-  `recipes_processed` char(1) NOT NULL DEFAULT 'N',
-  `skins_processed` char(1) NOT NULL DEFAULT 'N',
-  PRIMARY KEY (`build_id`)
+CREATE TABLE `skin_index_log_tb` (
+  `skin_id` mediumint(8) unsigned NOT NULL,
+  `skin_json` text NOT NULL,
+  `skin_md5` char(32) NOT NULL,
+  `first_seen_build_id` mediumint(8) NOT NULL,
+  `last_seen_build_id` mediumint(8) NOT NULL,
+  `last_updt_build_id` mediumint(8) NOT NULL,
+  `last_updt_dt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `changed_build_id` mediumint(8) NOT NULL,
+  PRIMARY KEY (`skin_id`,`changed_build_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -43,4 +46,4 @@ CREATE TABLE `build_tb` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-04-18 19:13:52
+-- Dump completed on 2014-04-18 19:15:49
