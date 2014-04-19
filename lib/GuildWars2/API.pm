@@ -48,6 +48,9 @@ my $_url_objective_names  = 'wvw/objective_names.json';
 my $_url_items            = 'items.json';
 my $_url_item_details     = 'item_details.json';
 
+my $_url_skins            = 'skins.json';
+my $_url_skin_details     = 'skin_details.json';
+
 my $_url_recipes          = 'recipes.json';
 my $_url_recipe_details   = 'recipe_details.json';
 
@@ -484,9 +487,57 @@ sub get_item {
 
   # Store the original raw JSON response
   $item->_set_json($raw);
-  $item->_set_md5(md5_hex(utf8::encode($raw)));
+  my $eraw = $raw;
+  utf8::encode($eraw);
+  $item->_set_md5(md5_hex($eraw));
 
   return $item;
+}
+
+
+sub list_skins {
+  my ($self) = @_;
+
+  my ($raw, $json) = $self->_api_request($_url_skins, {}, "1 second");
+
+  return @{$json->{skins}};
+}
+
+
+sub get_skin {
+  my ($self, $skin_id, $lang) = @_;
+
+  # Sanity checks on item_id
+  Carp::croak("You must provide a skin ID")
+    unless defined $skin_id;
+
+  Carp::croak("Given skin ID [$skin_id] is not a positive integer")
+    unless $skin_id =~ /^\d+$/;
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_skin_details, { lang => $lang, skin_id => $skin_id } );
+
+  # Convert CamelCase type value to lower_case subobject name
+  (my $tx = $json->{type}) =~ s/([a-z])([A-Z])/${1}_$2/g;
+  $tx = lc($tx);
+
+  # Standardize name of type-specific subobject
+  if (my $a = delete $json->{$tx}) { $json->{type_data} = $a; }
+
+  my $skin = GuildWars2::API::Objects::Skin->new($json);
+
+  # Store the original raw JSON response
+  $skin->_set_json($raw);
+  my $eraw = $raw;
+  utf8::encode($eraw);
+  $skin->_set_md5(md5_hex($eraw));
+
+  return $skin;
 }
 
 
@@ -515,7 +566,9 @@ sub get_recipe {
 
   # Store the original raw JSON response
   $recipe->_set_json($raw);
-  $recipe->_set_md5(md5_hex(utf8::encode($raw)));
+  my $eraw = $raw;
+  utf8::encode($eraw);
+  $recipe->_set_md5(md5_hex($eraw));
 
   return $recipe;
 }
