@@ -83,6 +83,7 @@ $sth_recipe_md5->execute() or die "Can't execute statement: $DBI::errstr";
 while (my $i = $sth_recipe_md5->fetchrow_arrayref()) {
   $recipe_md5s{$i->[0]} = $i->[1];
 }
+say scalar(keys %recipe_md5s) . " total recipes in database.";
 
 # Get list of recipes from API
 say "Getting current list of recipes..." if $VERBOSE;
@@ -306,7 +307,7 @@ sub worker
   # Log the previous version of a changed recipe
   my $sth_index_log = $dbh->prepare('
       insert into recipe_index_log_tb
-      select a.*, ? from recipe_index_tb where recipe_id = ?
+      select a.*, ? from recipe_index_tb a where recipe_id = ?
   ');
 
   # Upsert a new or changed recipe to the index table

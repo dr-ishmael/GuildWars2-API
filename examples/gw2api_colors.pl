@@ -12,7 +12,7 @@ open(OMAIN, ">colors.csv") or die "unable to open file: $!\n";
 say OMAIN "color_id|color_name|cloth|leather|metal";
 #say OMAIN "color_id|color_name|cloth|cloth-calc|leather|leather-calc|metal|metal-calc";
 
-my %colors = $api->get_colors;
+my %colors = $api->get_colors();
 
 foreach my $color_id (sort { $a <=> $b } keys %colors) {
 

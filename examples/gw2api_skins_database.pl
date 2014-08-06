@@ -82,6 +82,7 @@ $sth_skin_md5->execute() or die "Can't execute statement: $DBI::errstr";
 while (my $i = $sth_skin_md5->fetchrow_arrayref()) {
   $skin_md5s{$i->[0]} = $i->[1];
 }
+say scalar(keys %skin_md5s) . " total skins in database.";
 
 # Get list of skins from API
 say "Getting current list of skins..." if $VERBOSE;
@@ -305,7 +306,7 @@ sub worker
   # Log the previous version of a changed skin
   my $sth_index_log = $dbh->prepare('
       insert into skin_index_log_tb
-      select a.*, ? from skin_index_tb where skin_id = ?
+      select a.*, ? from skin_index_tb a where skin_id = ?
   ');
 
 
@@ -343,6 +344,17 @@ sub worker
        ,armor_class=VALUES(armor_class)
        ,weapon_damage_type=VALUES(weapon_damage_type)
        ,skin_warnings=VALUES(skin_warnings)
+    ')
+    or die "Can't prepare statement: $DBI::errstr";
+
+  # Upsert language data
+  my $sth_lang_upsert = $dbh->prepare('
+      insert into skin_lang_tb (skin_id, skin_name_de, skin_name_es, skin_name_fr)
+      values (?, ?, ?, ?)
+      on duplicate key update
+        skin_name_de=VALUES(skin_name_de)
+       ,skin_name_es=VALUES(skin_name_es)
+       ,skin_name_fr=VALUES(skin_name_fr)
     ')
     or die "Can't prepare statement: $DBI::errstr";
 
@@ -440,6 +452,23 @@ sub worker
       say $log "\tData update complete." if $VERBOSE;
 
     }
+
+    # Process language data
+    say $log "Getting de/es/fr language data" if $VERBOSE;
+    my $skin_de = $api->get_skin($skin_id, 'de');
+    my $skin_es = $api->get_skin($skin_id, 'es');
+    my $skin_fr = $api->get_skin($skin_id, 'fr');
+
+    say $log "Updating skin language data..." if $VERBOSE;
+    $sth_lang_upsert->execute(
+       $skin_id
+      ,$skin_de->skin_name
+      ,$skin_es->skin_name
+      ,$skin_fr->skin_name
+    )
+      or die "Can't execute statement: $DBI::errstr";
+    say $log "\tLanguage data update complete." if $VERBOSE;
+
     say $log "\tCompleted processing skin $skin_id." if $VERBOSE;
     # Continue looping until told to terminate
   }

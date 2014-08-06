@@ -180,8 +180,8 @@ my @_default_disciplines = qw( Armorsmith Artificer Chef Huntsman Jeweler Leathe
 
 my %enum_map = (
   'recipe_type' => [qw(
-      Amulet Axe Bag Boots Bulk Coat Component Consumable Dagger Dessert Dye
-      Earring Feast Focus Gloves Greatsword Hammer Harpoon Helm IngredientCooking
+      Amulet Axe Backpack Bag Boots Bulk Coat Component Consumable Dagger Dessert
+      Dye Earring Feast Focus Gloves Greatsword Hammer Harpoon Helm IngredientCooking
       Inscription Insignia Leggings LongBow Mace Meal Pistol Potion Refinement
       RefinementEctoplasm RefinementObsidian Rifle Ring Scepter Seasoning Shield
       ShortBow Shoulders Snack Soup Speargun Staff Sword Torch Trident
@@ -266,7 +266,7 @@ sub _validate_enum {
   my $a = $args->{$field};
   return if !$a;
   unless (in($a, $enum_map{$field})) {
-    $args->{recipe  _warnings} .= "Unrecognized $field: [$a].\n";
+    $args->{recipe_warnings} .= "Unrecognized $field: [$a].\n";
     $args->{$field} = '';
   }
 }

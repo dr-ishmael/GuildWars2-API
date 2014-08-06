@@ -16,6 +16,7 @@ use Moose::Util qw( with_traits );
 use Moose::Util::TypeConstraints;
 
 use GuildWars2::API::Objects;
+use GuildWars2::API::Utils;
 
 
 ####################
@@ -62,7 +63,9 @@ my $_url_files            = 'files.json';
 
 
 # Supported languages
-enum 'Lang', [qw(de en es fr)];
+my @_languages = qw( de en es fr );
+
+enum 'Lang', [@_languages];
 
 ####################
 # Attributes
@@ -122,18 +125,18 @@ sub _build_prefix_map {
     "conditionduration,vitality" => "giver_2w",
     "healing,power" => "rejuvenating",
     "healing,vitality" => "mending",
-    "power,precision,critdamage" => "berserker",
+    "power,critdamage,precision" => "berserker",
     "power,ferocity,precision" => "berserker",
     "power,healing,precision" => "zealot",
     "power,toughness,vitality" => "soldier",
-    "power,vitality,critdamage" => "valkyrie",
+    "power,critdamage,vitality" => "valkyrie",
     "power,ferocity,vitality" => "valkyrie",
     "precision,power,toughness" => "knight_suf",
-    "precision,power,critdamage" => "assassin",
+    "precision,critdamage,power" => "assassin",
     "precision,ferocity,power" => "assassin",
     "precision,conditiondamage,power" => "rampager",
     "toughness,power,precision" => "knight",
-    "toughness,power,critdamage" => "cavalier",
+    "toughness,critdamage,power" => "cavalier",
     "toughness,ferocity,power" => "cavalier",
     "toughness,conditiondamage,healing" => "settler",
     "toughness,boonduration,healing" => "giver_3a",
@@ -147,7 +150,7 @@ sub _build_prefix_map {
     "healing,power,toughness" => "cleric",
     "healing,precision,vitality" => "magi",
     "healing,conditiondamage,toughness" => "apothecary",
-    "conditiondamage,healing,power,precision,toughness,vitality,critdamage" => "celestial",
+    "conditiondamage,critdamage,healing,power,precision,toughness,vitality" => "celestial",
     "conditiondamage,ferocity,healing,power,precision,toughness,vitality" => "celestial",
   };
 }
@@ -200,6 +203,23 @@ sub _retry(&;$) {
 ####################
 # Core methods
 ####################
+
+sub _check_language {
+  my ($self, $lang) = @_;
+
+  # If input is undef, return undef
+  return undef if !defined($lang);
+
+  my $lang_orig = $lang;
+
+  $lang = lc($lang);
+
+  if (in($lang, \@_languages)) {
+    return $lang;
+  } else {
+    Carp::croak "Language code [$lang_orig] is not supported";
+  }
+}
 
 sub _api_request {
   my ($self, $interface, $parms, $cache_age) = @_;
@@ -264,14 +284,14 @@ sub _api_request {
       $self->cache->remove($url) unless defined $self->{nocache};
       undef $response;
     }
-
-    if (defined($decoded->{error})) {
-      Carp::carp "API error at [$url]";
-      $self->cache->remove($url) unless defined $self->{nocache};
-    }
   }
 
-  $self->_set_status(1);
+  if (defined($decoded->{error})) {
+    Carp::carp "API error at [$url]";
+    $self->cache->remove($url) unless defined $self->{nocache};
+  } else {
+    $self->_set_status(1);
+  }
 
   return ($response, $decoded);
 }
@@ -476,22 +496,28 @@ sub get_item {
 
   my ($raw, $json) = $self->_api_request($_url_item_details, { lang => $lang, item_id => $item_id } );
 
-  # Convert CamelCase type value to lower_case subobject name
-  (my $tx = $json->{type}) =~ s/([a-z])([A-Z])/${1}_$2/g;
-  $tx = lc($tx);
+  if ($self->is_success) {
+    # Convert CamelCase type value to lower_case subobject name
+    (my $tx = $json->{type}) =~ s/([a-z])([A-Z])/${1}_$2/g;
+    $tx = lc($tx);
 
-  # Standardize name of type-specific subobject
-  if (my $a = delete $json->{$tx}) { $json->{type_data} = $a; }
+    # Standardize name of type-specific subobject
+    if (my $a = delete $json->{$tx}) { $json->{type_data} = $a; }
 
-  my $item = GuildWars2::API::Objects::Item->new($json);
+    my $item = GuildWars2::API::Objects::Item->new($json);
 
-  # Store the original raw JSON response
-  $item->_set_json($raw);
-  my $eraw = $raw;
-  utf8::encode($eraw);
-  $item->_set_md5(md5_hex($eraw));
+    # Store the original raw JSON response
+    $item->_set_json($raw);
+    my $eraw = $raw;
+    utf8::encode($eraw);
+    $item->_set_md5(md5_hex($eraw));
 
-  return $item;
+    return $item;
+  } else {
+    Carp::carp("Given item ID [$item_id] returned an API error message");
+    my $error = GuildWars2::API::Objects::Error->new($json);
+    return $error;
+  }
 }
 
 
@@ -522,22 +548,28 @@ sub get_skin {
 
   my ($raw, $json) = $self->_api_request($_url_skin_details, { lang => $lang, skin_id => $skin_id } );
 
-  # Convert CamelCase type value to lower_case subobject name
-  (my $tx = $json->{type}) =~ s/([a-z])([A-Z])/${1}_$2/g;
-  $tx = lc($tx);
+  if ($self->is_success) {
+    # Convert CamelCase type value to lower_case subobject name
+    (my $tx = $json->{type}) =~ s/([a-z])([A-Z])/${1}_$2/g;
+    $tx = lc($tx);
 
-  # Standardize name of type-specific subobject
-  if (my $a = delete $json->{$tx}) { $json->{type_data} = $a; }
+    # Standardize name of type-specific subobject
+    if (my $a = delete $json->{$tx}) { $json->{type_data} = $a; }
 
-  my $skin = GuildWars2::API::Objects::Skin->new($json);
+    my $skin = GuildWars2::API::Objects::Skin->new($json);
 
-  # Store the original raw JSON response
-  $skin->_set_json($raw);
-  my $eraw = $raw;
-  utf8::encode($eraw);
-  $skin->_set_md5(md5_hex($eraw));
+    # Store the original raw JSON response
+    $skin->_set_json($raw);
+    my $eraw = $raw;
+    utf8::encode($eraw);
+    $skin->_set_md5(md5_hex($eraw));
 
-  return $skin;
+    return $skin;
+  } else {
+    Carp::carp("Given skin ID [$skin_id] returned an API error message");
+    my $error = GuildWars2::API::Objects::Error->new($json);
+    return $error;
+  }
 }
 
 
@@ -562,15 +594,21 @@ sub get_recipe {
 
   my ($raw, $json) = $self->_api_request($_url_recipe_details, { recipe_id => $recipe_id } );
 
-  my $recipe = GuildWars2::API::Objects::Recipe->new( $json );
+  if ($self->is_success) {
+    my $recipe = GuildWars2::API::Objects::Recipe->new( $json );
 
-  # Store the original raw JSON response
-  $recipe->_set_json($raw);
-  my $eraw = $raw;
-  utf8::encode($eraw);
-  $recipe->_set_md5(md5_hex($eraw));
+    # Store the original raw JSON response
+    $recipe->_set_json($raw);
+    my $eraw = $raw;
+    utf8::encode($eraw);
+    $recipe->_set_md5(md5_hex($eraw));
 
-  return $recipe;
+    return $recipe;
+  } else {
+    Carp::carp("Given recipe ID [$recipe_id] returned an API error message");
+    my $error = GuildWars2::API::Objects::Error->new($json);
+    return $error;
+  }
 }
 
 

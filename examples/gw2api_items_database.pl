@@ -83,6 +83,7 @@ $sth_item_md5->execute() or die "Can't execute statement: $DBI::errstr";
 while (my $i = $sth_item_md5->fetchrow_arrayref()) {
   $item_md5s{$i->[0]} = $i->[1];
 }
+say scalar(keys %item_md5s) . " total items in database.";
 
 # Get list of items from API
 say "Getting current list of items..." if $VERBOSE;
@@ -307,7 +308,7 @@ sub worker
   # Log the previous version of a changed item
   my $sth_index_log = $dbh->prepare('
       insert into item_index_log_tb
-      select a.*, ? from item_index_tb where item_id = ?
+      select a.*, ? from item_index_tb a where item_id = ?
   ');
 
   # Upsert a new or changed item to the index table
@@ -328,8 +329,8 @@ sub worker
 
   # Upsert a new or changed item to the data table
   my $sth_data_upsert = $dbh->prepare('
-      insert into item_tb (item_id, item_name, item_type, item_subtype, item_level, item_rarity, item_description, vendor_value, game_type_activity, game_type_dungeon, game_type_pve, game_type_pvp, game_type_pvplobby, game_type_wvw, flag_accountbindonuse, flag_accountbound, flag_hidesuffix, flag_nomysticforge, flag_nosalvage, flag_nosell, flag_notupgradeable, flag_nounderwater, flag_soulbindonacquire, flag_soulbindonuse, flag_unique, item_file_id, item_file_signature, default_skin, equip_prefix, equip_infusion_slot_1_type, equip_infusion_slot_1_item_id, equip_infusion_slot_2_type, equip_infusion_slot_2_item_id, suffix_item_id, second_suffix_item_id, buff_skill_id, buff_description, armor_class, armor_race, bag_size, bag_invisible, food_duration_sec, food_description, tool_charges, unlock_type, unlock_color_id, unlock_recipe_id, upgrade_type, upgrade_suffix, upgrade_infusion_type, weapon_damage_type, item_warnings)
-      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      insert into item_tb (item_id, item_name, item_type, item_subtype, item_level, item_rarity, item_description, vendor_value, game_type_activity, game_type_dungeon, game_type_pve, game_type_pvp, game_type_pvplobby, game_type_wvw, flag_accountbindonuse, flag_accountbound, flag_hidesuffix, flag_nomysticforge, flag_nosalvage, flag_nosell, flag_notupgradeable, flag_nounderwater, flag_soulbindonacquire, flag_soulbindonuse, flag_unique, item_file_id, item_file_signature, default_skin, equip_prefix, equip_infusion_slot_1_type, equip_infusion_slot_1_item_id, equip_infusion_slot_2_type, equip_infusion_slot_2_item_id, suffix_item_id, second_suffix_item_id, buff_skill_id, buff_description, armor_class, armor_race, armor_defense, bag_size, bag_invisible, food_duration_sec, food_description, tool_charges, unlock_type, unlock_color_id, unlock_recipe_id, upgrade_type, upgrade_suffix, upgrade_infusion_type, weapon_damage_type, weapon_min_strength, weapon_max_strength, item_warnings)
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       on duplicate key update
         item_name=VALUES(item_name)
        ,item_type=VALUES(item_type)
@@ -369,6 +370,7 @@ sub worker
        ,buff_description=VALUES(buff_description)
        ,armor_class=VALUES(armor_class)
        ,armor_race=VALUES(armor_race)
+       ,armor_defense=VALUES(armor_defense)
        ,bag_size=VALUES(bag_size)
        ,bag_invisible=VALUES(bag_invisible)
        ,food_duration_sec=VALUES(food_duration_sec)
@@ -381,6 +383,8 @@ sub worker
        ,upgrade_suffix=VALUES(upgrade_suffix)
        ,upgrade_infusion_type=VALUES(upgrade_infusion_type)
        ,weapon_damage_type=VALUES(weapon_damage_type)
+       ,weapon_min_strength=VALUES(weapon_min_strength)
+       ,weapon_max_strength=VALUES(weapon_max_strength)
        ,item_warnings=VALUES(item_warnings)
     ')
     or die "Can't prepare statement: $DBI::errstr";
@@ -399,6 +403,20 @@ sub worker
 
   # Insert attribute entries
   my $sth_insert_attr = $dbh->prepare('insert into item_attribute_tb values (?, ?, ?)')
+    or die "Can't prepare statement: $DBI::errstr";
+
+  # Upsert language data
+  my $sth_lang_upsert = $dbh->prepare('
+      insert into item_lang_tb (item_id, item_name_de, item_name_es, item_name_fr, item_description_de, item_description_es, item_description_fr)
+      values (?, ?, ?, ?, ?, ?, ?)
+      on duplicate key update
+        item_name_de=VALUES(item_name_de)
+       ,item_name_es=VALUES(item_name_es)
+       ,item_name_fr=VALUES(item_name_fr)
+       ,item_description_de=VALUES(item_description_de)
+       ,item_description_es=VALUES(item_description_es)
+       ,item_description_fr=VALUES(item_description_fr)
+    ')
     or die "Can't prepare statement: $DBI::errstr";
 
   say $log "\tSQL statements prepared." if $VERBOSE;
@@ -438,6 +456,12 @@ sub worker
     my $item = $api->get_item($item_id);
     say $log "\tAPI data retrieved." if $VERBOSE;
 
+    if ($item->can('error')) {
+      say STDERR "API returned an error! Aborting item...";
+      next;
+      ### might need more code here to "clean up" database on errors ###
+    }
+
     say $log "Looking up existing MD5..." if $VERBOSE;
     my $old_md5 = $item_md5s{$item_id};
     if ($old_md5) {
@@ -466,12 +490,6 @@ sub worker
       $new_q->enqueue($item_id);
     }
 
-# For the future!
-#  my $item_de = $api->get_item($item_id, 'de');
-#  my $item_en = $api->get_item($item_id, 'en');
-#  my $item_es = $api->get_item($item_id, 'es');
-#  my $item_fr = $api->get_item($item_id, 'fr');
-
     if ($change_flag) {
       say $log "Updating item index..." if $VERBOSE;
       $sth_index_upsert->execute($item_id, $item->raw_json, $item->raw_md5, $curr_build_id, $curr_build_id, $curr_build_id)
@@ -487,7 +505,6 @@ sub worker
       }
 
 
-      # New or change
       say $log "Updating item data..." if $VERBOSE;
       $sth_data_upsert->execute(
          $item->item_id
@@ -529,6 +546,7 @@ sub worker
         ,$item->buff_desc
         ,$item->armor_weight
         ,$item->armor_race
+        ,$item->defense
         ,$item->bag_size
         ,$item->invisible
         ,$item->food_duration_sec
@@ -541,6 +559,8 @@ sub worker
         ,$item->suffix
         ,$item->infusion_type
         ,$item->damage_type
+        ,$item->min_strength
+        ,$item->max_strength
         ,$item->item_warnings
       )
         or die "Can't execute statement: $DBI::errstr";
@@ -580,6 +600,26 @@ sub worker
         say $log "\tAll attribute data inserted." if $VERBOSE;
       }
     }
+
+    # Process language data
+    say $log "Getting de/es/fr language data" if $VERBOSE;
+    my $item_de = $api->get_item($item_id, 'de');
+    my $item_es = $api->get_item($item_id, 'es');
+    my $item_fr = $api->get_item($item_id, 'fr');
+
+    say $log "Updating item language data..." if $VERBOSE;
+    $sth_lang_upsert->execute(
+       $item_id
+      ,$item_de->item_name
+      ,$item_es->item_name
+      ,$item_fr->item_name
+      ,$item_de->description
+      ,$item_es->description
+      ,$item_fr->description
+    )
+      or die "Can't execute statement: $DBI::errstr";
+    say $log "\tLanguage data update complete." if $VERBOSE;
+
     say $log "\tCompleted processing item $item_id." if $VERBOSE;
     # Continue looping until told to terminate
   }

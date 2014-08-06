@@ -64,6 +64,7 @@ CREATE TABLE `item_tb` (
   `second_suffix_item_id` mediumint(8) unsigned DEFAULT NULL,
   `armor_class` varchar(32) DEFAULT NULL,
   `armor_race` varchar(32) DEFAULT NULL,
+  `armor_defense` smallint(5) unsigned DEFAULT NULL,
   `bag_size` tinyint(3) unsigned DEFAULT NULL,
   `bag_invisible` tinyint(1) unsigned DEFAULT NULL,
   `food_duration_sec` mediumint(8) unsigned DEFAULT NULL,
@@ -76,6 +77,8 @@ CREATE TABLE `item_tb` (
   `upgrade_suffix` varchar(32) DEFAULT NULL,
   `upgrade_infusion_type` varchar(32) DEFAULT NULL,
   `weapon_damage_type` varchar(32) DEFAULT NULL,
+  `weapon_min_strength` smallint(5) unsigned DEFAULT NULL,
+  `weapon_max_strength` smallint(5) unsigned DEFAULT NULL,
   `item_warnings` varchar(1024) DEFAULT NULL,
   PRIMARY KEY (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

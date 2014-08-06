@@ -214,7 +214,7 @@ my @_default_flags = qw( AccountBindOnUse AccountBound HideSuffix NoMysticForge 
 my %enum_map = (
   'item_type' => [qw(
       Armor Back Bag Consumable Container CraftingMaterial Gathering Gizmo MiniPet
-      Tool Trinket Trophy UpgradeComponent Weapon
+      Tool Trait Trinket Trophy UpgradeComponent Weapon
     )],
   'item_subtype' => [
       # Common
@@ -226,11 +226,11 @@ my %enum_map = (
       # Consumable
       qw(AppearanceChange Booze ContractNpc Food Generic Halloween Immediate Transmutation Unlock UnTransmutation UpgradeRemoval Utility),
       # Container
-      qw(GiftBox),
+      qw(GiftBox OpenUI),
       # Gathering
       qw(Foraging Logging Mining),
       # Gizmo
-      qw(RentableContractNpc UnlimitedConsumable),
+      qw(ContainerKey RentableContractNpc UnlimitedConsumable),
       # Tool
       qw(Salvage),
       # Trinket
@@ -239,12 +239,12 @@ my %enum_map = (
       qw(Gem Rune Sigil),
       # Weapon
       qw(Axe Dagger Focus Greatsword Hammer Harpoon LargeBundle LongBow Mace Pistol Rifle
-         Scepter Shield ShortBow Speargun Staff Sword Torch Toy Trident TwoHandedToy Warhorn)
+         Scepter Shield ShortBow SmallBundle Speargun Staff Sword Torch Toy Trident TwoHandedToy Warhorn)
     ],
   'rarity' => [qw( Junk Basic Fine Masterwork Rare Exotic Ascended Legendary )],
   'armor_weight' => [qw( Clothing Light Medium Heavy )],
   'armor_race' => [qw( Asura Charr Human Norn Sylvari )],
-  'damage_type' => [qw( Fire Ice Lightning Physical )],
+  'damage_type' => [qw( Choking Fire Ice Lightning Physical )],
   'infusion_type' => [qw( Agony Defense Offense Omni Utility )],
   'infusion_slot_type' => [qw( Defense Offense Utility )],
   'unlock_type' => [qw( BagSlot BankTab CollectibleCapacity Content CraftingRecipe Dye Unknown )],
@@ -263,18 +263,16 @@ enum 'UnlockType',        $enum_map{'unlock_type'};
 enum 'UpgradeType',       $enum_map{'upgrade_type'};
 
 
-has 'item_id'               => ( is => 'ro', isa => 'Int',            required => 1 );
-# "name" field broken by Feature Pack, hotfix coming soon, but until then we have to allow blank values
-#has 'item_name'             => ( is => 'ro', isa => 'Str',            required => 1 );
-has 'item_name'             => ( is => 'ro', isa => 'Str',          );
-has 'item_type'             => ( is => 'ro', isa => 'ItemType',       required => 1 );
-has 'level'                 => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'rarity'                => ( is => 'ro', isa => 'ItemRarity',     required => 1 );
-has 'vendor_value'          => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'game_type_flags'       => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
-has 'item_flags'            => ( is => 'ro', isa => 'HashRef[Bool]',  required => 1 );
-has 'icon_file_id'          => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'icon_signature'        => ( is => 'ro', isa => 'Str',            required => 1 );
+has 'item_id'               => ( is => 'ro', isa => 'Int', required => 1 );
+has 'item_name'             => ( is => 'ro', isa => 'Str'           );
+has 'item_type'             => ( is => 'ro', isa => 'ItemType'      );
+has 'level'                 => ( is => 'ro', isa => 'Int'           );
+has 'rarity'                => ( is => 'ro', isa => 'ItemRarity'    );
+has 'vendor_value'          => ( is => 'ro', isa => 'Int'           );
+has 'game_type_flags'       => ( is => 'ro', isa => 'HashRef[Bool]' );
+has 'item_flags'            => ( is => 'ro', isa => 'HashRef[Bool]' );
+has 'icon_file_id'          => ( is => 'ro', isa => 'Int'           );
+has 'icon_signature'        => ( is => 'ro', isa => 'Str'           );
 has 'description'           => ( is => 'ro', isa => 'Str'           );
 has 'default_skin'          => ( is => 'ro', isa => 'Int'           );
 has 'item_subtype'          => ( is => 'ro', isa => 'ItemSubtype'   );
@@ -319,8 +317,7 @@ around 'BUILDARGS', sub {
   # Explicitly copy attributes from original $args to $new_args
   # Perform some renames and data hygiene on the way
   if(my $a = delete $args->{item_id}) { $new_args->{item_id} = $a }
-  #if(my $a = delete $args->{name}) { ($new_args->{item_name} = $a) =~ s/\n//g } else { $new_args->{item_name} = "[null]" }
-  if(defined(my $a = delete $args->{name})) { $new_args->{item_name} = $a }
+  if(my $a = delete $args->{name}) { ($new_args->{item_name} = $a) =~ s/\n//g }
   if(my $a = delete $args->{type}) { $new_args->{item_type} = $a }
   if(defined(my $a = delete $args->{level})) { $new_args->{level} = $a }
   if(my $a = delete $args->{rarity}) { $new_args->{rarity} = $a }
@@ -487,7 +484,7 @@ sub _validate_enum {
   return if !$a;
   unless (in($a, $enum_map{$field})) {
     $args->{item_warnings} .= "Unrecognized $field: [$a].\n";
-    $args->{$field} = '';
+    delete $args->{$field};
   }
 }
 
