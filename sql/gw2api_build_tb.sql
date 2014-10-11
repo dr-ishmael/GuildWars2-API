@@ -1,6 +1,6 @@
 CREATE DATABASE  IF NOT EXISTS `gw2api` /*!40100 DEFAULT CHARACTER SET utf8 */;
 USE `gw2api`;
--- MySQL dump 10.13  Distrib 5.6.13, for Win32 (x86)
+-- MySQL dump 10.13  Distrib 5.6.17, for Win32 (x86)
 --
 -- Host: 127.0.0.1    Database: gw2api
 -- ------------------------------------------------------
@@ -43,4 +43,4 @@ CREATE TABLE `build_tb` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-04-18 19:13:52
+-- Dump completed on 2014-10-11 17:47:25

@@ -1,6 +1,6 @@
 CREATE DATABASE  IF NOT EXISTS `gw2api` /*!40100 DEFAULT CHARACTER SET utf8 */;
 USE `gw2api`;
--- MySQL dump 10.13  Distrib 5.6.13, for Win32 (x86)
+-- MySQL dump 10.13  Distrib 5.6.17, for Win32 (x86)
 --
 -- Host: 127.0.0.1    Database: gw2api
 -- ------------------------------------------------------
@@ -49,6 +49,13 @@ CREATE TABLE `recipe_tb` (
   `ingredient_4_id` mediumint(8) unsigned DEFAULT NULL,
   `ingredient_4_qty` smallint(5) unsigned DEFAULT NULL,
   `recipe_warnings` varchar(1024) DEFAULT NULL,
+  `recipe_md5` char(32) NOT NULL,
+  `first_seen_build_id` mediumint(8) DEFAULT NULL,
+  `first_seen_dt` datetime DEFAULT CURRENT_TIMESTAMP,
+  `last_seen_build_id` mediumint(8) DEFAULT NULL,
+  `last_seen_dt` datetime DEFAULT CURRENT_TIMESTAMP,
+  `last_updt_build_id` mediumint(8) DEFAULT NULL,
+  `last_updt_dt` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`recipe_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -62,4 +69,4 @@ CREATE TABLE `recipe_tb` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-04-18 19:13:53
+-- Dump completed on 2014-10-11 17:47:26

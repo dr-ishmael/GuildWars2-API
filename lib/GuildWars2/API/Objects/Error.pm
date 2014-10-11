@@ -14,10 +14,10 @@ use namespace::autoclean;
 use Moose;
 use Moose::Util::TypeConstraints;
 
-has 'error'                 => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'product'               => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'module'                => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'line'                  => ( is => 'ro', isa => 'Int',            required => 1 );
-has 'text'                  => ( is => 'ro', isa => 'Str',            required => 1 );
+has 'error'                 => ( is => 'ro', isa => 'Int' );
+has 'product'               => ( is => 'ro', isa => 'Int' );
+has 'module'                => ( is => 'ro', isa => 'Int' );
+has 'line'                  => ( is => 'ro', isa => 'Int' );
+has 'text'                  => ( is => 'ro', isa => 'Str' );
 
 1;

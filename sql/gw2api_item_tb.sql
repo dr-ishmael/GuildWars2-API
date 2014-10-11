@@ -1,6 +1,6 @@
 CREATE DATABASE  IF NOT EXISTS `gw2api` /*!40100 DEFAULT CHARACTER SET utf8 */;
 USE `gw2api`;
--- MySQL dump 10.13  Distrib 5.6.13, for Win32 (x86)
+-- MySQL dump 10.13  Distrib 5.6.17, for Win32 (x86)
 --
 -- Host: 127.0.0.1    Database: gw2api
 -- ------------------------------------------------------
@@ -50,8 +50,7 @@ CREATE TABLE `item_tb` (
   `flag_soulbindonacquire` tinyint(1) unsigned NOT NULL DEFAULT '0',
   `flag_soulbindonuse` tinyint(1) unsigned NOT NULL DEFAULT '0',
   `flag_unique` tinyint(1) unsigned NOT NULL DEFAULT '0',
-  `item_file_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
-  `item_file_signature` char(40) NOT NULL DEFAULT '0',
+  `icon_url` varchar(100) NOT NULL DEFAULT '0',
   `default_skin` mediumint(9) DEFAULT NULL,
   `equip_prefix` varchar(32) DEFAULT NULL,
   `equip_infusion_slot_1_type` varchar(32) DEFAULT NULL,
@@ -59,7 +58,7 @@ CREATE TABLE `item_tb` (
   `equip_infusion_slot_2_type` varchar(32) DEFAULT NULL,
   `equip_infusion_slot_2_item_id` mediumint(8) unsigned DEFAULT NULL,
   `buff_skill_id` mediumint(8) unsigned DEFAULT NULL,
-  `buff_description` varchar(256) DEFAULT NULL,
+  `buff_description` varchar(1024) DEFAULT NULL,
   `suffix_item_id` mediumint(8) unsigned DEFAULT NULL,
   `second_suffix_item_id` mediumint(8) unsigned DEFAULT NULL,
   `armor_class` varchar(32) DEFAULT NULL,
@@ -80,6 +79,13 @@ CREATE TABLE `item_tb` (
   `weapon_min_strength` smallint(5) unsigned DEFAULT NULL,
   `weapon_max_strength` smallint(5) unsigned DEFAULT NULL,
   `item_warnings` varchar(1024) DEFAULT NULL,
+  `item_md5` char(32) NOT NULL,
+  `first_seen_build_id` mediumint(8) DEFAULT NULL,
+  `first_seen_dt` datetime DEFAULT CURRENT_TIMESTAMP,
+  `last_seen_build_id` mediumint(8) DEFAULT NULL,
+  `last_seen_dt` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `last_updt_build_id` mediumint(8) DEFAULT NULL,
+  `last_updt_dt` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -93,4 +99,4 @@ CREATE TABLE `item_tb` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-04-18 19:13:53
+-- Dump completed on 2014-10-11 17:47:27

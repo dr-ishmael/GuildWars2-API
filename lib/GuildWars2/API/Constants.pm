@@ -2,6 +2,7 @@ package GuildWars2::API::Constants;
 
 use base 'Exporter';
 
+# Chat link headers
 use constant {
   COIN_LINK_TYPE     =>  1,
   ITEM_LINK_TYPE     =>  2,
@@ -11,8 +12,10 @@ use constant {
   TRAIT_LINK_TYPE    =>  8,
   RECIPE_LINK_TYPE   => 10,
   SKIN_LINK_TYPE     => 11,
+  OUTFIT_LINK_TYPE   => 12,
 };
 
+# Recipe "learned from" flags
 use constant {
   DISC_IDX => 1,
   AUTO_IDX => 2,

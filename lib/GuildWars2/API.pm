@@ -2,7 +2,7 @@ use Modern::Perl '2014';
 
 package GuildWars2::API;
 BEGIN {
-  $GuildWars2::API::VERSION     = '0.50';
+  $GuildWars2::API::VERSION     = '2.0a';
 }
 use Carp ();
 use Digest::MD5 qw(md5_hex);
@@ -23,76 +23,67 @@ use GuildWars2::API::Utils;
 # Local constants
 ####################
 
-my $_api_version          = 'v1';
-
-my $_base_url             = 'https://api.guildwars2.com/' . $_api_version;
+my $_base_url             = 'https://api.guildwars2.com';
 my $_base_render_url      = "https://render.guildwars2.com/file";
 
 # Pagenames of the available interfaces
-my $_url_build            = 'build.json';
+my $_url_build            = 'v1/build.json';
+#my $_url_build            = 'v2/build.json';
 
-my $_url_events           = 'events.json';
-my $_url_event_details    = 'event_details.json';
-my $_url_event_names      = 'event_names.json';
+#my $_url_events           = 'v2/events';
+#my $_url_events-state     = 'v2/events-state';
 
-my $_url_continents       = 'continents.json';
-my $_url_maps             = 'maps.json';
-my $_url_map_floor        = 'map_floor.json';
-my $_url_map_names        = 'map_names.json';
+#my $_url_worlds           = 'v2/worlds';
+#my $_url_continents       = 'v2/continents';
+#my $_url_maps             = 'v2/maps';
+#my $_url_floors           = 'v2/floors';
 
-my $_url_world_names      = 'world_names.json';
+#my $_url_wvw_matches      = 'v2/wvw/matches';
+#my $_url_wvw_objectives   = 'v2/wvw/objectives';
 
-my $_url_matches          = 'wvw/matches.json';
-my $_url_match_details    = 'wvw/match_details.json';
-my $_url_objective_names  = 'wvw/objective_names.json';
+my $_url_quaggans         = 'v2/quaggans';
 
-my $_url_items            = 'items.json';
-my $_url_item_details     = 'item_details.json';
+my $_url_items            = 'v2/items';
 
-my $_url_skins            = 'skins.json';
-my $_url_skin_details     = 'skin_details.json';
+my $_url_skins            = 'v2/skins';
 
-my $_url_recipes          = 'recipes.json';
-my $_url_recipe_details   = 'recipe_details.json';
+my $_url_recipes          = 'v2/recipes';
 
-my $_url_guild_details    = 'guild_details.json';
+#my $_url_colors           = 'v2/colors';
 
-my $_url_colors           = 'colors.json';
+#my $_url_files            = 'v2/files';
 
-my $_url_files            = 'files.json';
+#my $_url_accounts         = 'v2/accounts';
+#my $_url_characters       = 'v2/characters';
+#my $_url_leaderboards     = 'v2/leaderboards';
 
+my $_url_tp_exchange       = 'v2/commerce/exchange';
+my $_url_tp_listings       = 'v2/commerce/listings';
+my $_url_tp_prices         = 'v2/commerce/prices';
 
 # Supported languages
 my @_languages = qw( de en es fr );
 
 enum 'Lang', [@_languages];
 
+
 ####################
 # Attributes
 ####################
 
-
 has 'timeout'         => ( is => 'rw', isa => 'Int', default => 30 );
 has 'retries'         => ( is => 'rw', isa => 'Int', default => 3 );
 has 'language'        => ( is => 'rw', isa => 'Lang', default => 'en' );
-has 'nocache'         => ( is => 'ro', isa => 'Bool', default => undef );
-has 'cache_dir'       => ( is => 'ro', isa => 'Str', default => './gw2api-cache' );
-has 'cache_age'       => ( is => 'rw', isa => 'Str', default => '1 day' );
-has 'event_cache_age' => ( is => 'rw', isa => 'Str', default => '30 seconds' );
-has 'item_cache_age'  => ( is => 'rw', isa => 'Str', default => '14 days' );
-has 'wvw_cache_age'   => ( is => 'rw', isa => 'Str', default => '5 seconds' );
-has 'json'            => ( is => 'ro', isa => 'JSON::PP', default => sub{ JSON::PP->new } );
+has 'max_pagesize'    => ( is => 'rw', isa => 'Int',  default => 200 );
+has 'json'            => ( is => 'ro', isa => 'JSON::PP', default => sub{ JSON::PP->new->canonical } );
 has 'ua'              => ( is => 'ro', isa => 'LWP::UserAgent', default => sub{ LWP::UserAgent->new } );
-has 'cache'           => ( is => 'ro', isa => 'Maybe[CHI::Driver::File]', lazy => 1, builder => '_init_cache' );
-has '_status'         => ( is => 'ro', isa => 'Bool', default => 1, writer => '_set_status', reader => 'is_success' );
+has 'api_error'       => ( is => 'ro', isa => 'GuildWars2::API::Objects::Error', writer => '_set_api_error' );
+has '_status'         => ( is => 'ro', isa => 'Bool', default => 1,  writer => '_set_status', reader => 'is_success' );
+has '_curr_page'      => ( is => 'ro', isa => 'Int',  default => 0,  writer => '_set_curr_page' );
+#has '_max_page'       => ( is => 'ro', isa => 'Int',  default => 1,  writer => '_set_max_page' );
+#has '_curr_endpoint'  => ( is => 'ro', isa => 'Str',  default => "", writer => '_set_curr_endpoint' );
 has '_prefix_map'     => ( is => 'ro', isa => 'HashRef', lazy => 1, builder => '_build_prefix_map' );
 
-# This is to ensure that the cache is lazy-built immediately (yeah that's an oxymoron)
-# It has to be lazy because it depends on the cache_dir attribute.
-sub BUILD {
-  my $self = shift;
-  $self->cache->is_valid('dummykey') unless $self->nocache;
-}
 
 ####################
 # Init methods
@@ -109,40 +100,40 @@ sub _build_prefix_map {
     "healing" => "healing",
     "boonduration" => "winter_suf",
     "power,precision" => "strong",
+    "power,toughness" => "vagabond",
     "power,vitality" => "vigorous",
     "power,critdamage" => "honed",
-    "power,ferocity" => "honed",
     "power,conditiondamage" => "potent",
     "precision,power" => "hunter",
     "precision,critdamage" => "penetrating",
-    "precision,ferocity" => "penetrating",
     "toughness,precision" => "stout",
     "toughness,conditiondamage" => "enduring",
     "toughness,healing" => "giver_2a",
     "vitality,toughness" => "hearty",
     "conditiondamage,precision" => "ravaging",
+    "conditiondamage,toughness" => "deserter",
     "conditiondamage,vitality" => "lingering",
     "conditionduration,vitality" => "giver_2w",
     "healing,power" => "rejuvenating",
+    "healing,toughness" => "survivor",
     "healing,vitality" => "mending",
     "power,critdamage,precision" => "berserker",
-    "power,ferocity,precision" => "berserker",
     "power,healing,precision" => "zealot",
+    "power,healing,toughness" => "forsaken",
     "power,toughness,vitality" => "soldier",
     "power,critdamage,vitality" => "valkyrie",
-    "power,ferocity,vitality" => "valkyrie",
-    "precision,power,toughness" => "knight_suf",
+    "precision,power,toughness" => "captain",
     "precision,critdamage,power" => "assassin",
-    "precision,ferocity,power" => "assassin",
     "precision,conditiondamage,power" => "rampager",
     "toughness,power,precision" => "knight",
+    "toughness,healing,vitality" => "nomad",
     "toughness,critdamage,power" => "cavalier",
-    "toughness,ferocity,power" => "cavalier",
     "toughness,conditiondamage,healing" => "settler",
     "toughness,boonduration,healing" => "giver_3a",
     "vitality,power,toughness" => "sentinel",
     "vitality,power,healing" => "shaman_suf",
     "vitality,conditiondamage,healing" => "shaman",
+    "conditiondamage,healing,toughness" => "apostate",
     "conditiondamage,power,vitality" => "carrion",
     "conditiondamage,precision,toughness" => "rabid",
     "conditiondamage,toughness,vitality" => "dire",
@@ -151,36 +142,7 @@ sub _build_prefix_map {
     "healing,precision,vitality" => "magi",
     "healing,conditiondamage,toughness" => "apothecary",
     "conditiondamage,critdamage,healing,power,precision,toughness,vitality" => "celestial",
-    "conditiondamage,ferocity,healing,power,precision,toughness,vitality" => "celestial",
   };
-}
-
-sub _init_cache {
-  my $self = shift;
-
-  unless (defined $self->nocache) {
-    # Conditionally 'require' CHI and associated modules here instead of
-    # 'use'ing them at the top; if user doesn't want a cache, no need to
-    # waste compile time loading them
-    require CHI;
-    require GuildWars2::API::FileCache;
-    # If cache_dir exists...
-    if ( -e $self->cache_dir ) {
-      # ... make sure it's a directory
-      if ( ! -d $self->cache_dir ) {
-        Carp::croak "Cache_dir [$self->cache_dir] is not a directory";
-      }
-      # ... make sure it's writeable
-      if ( ! -w $self->cache_dir ) {
-        Carp::croak "Unable to write to cache_dir [$self->cache_dir]";
-      }
-    # Otherwise, attempt to create it
-    } else {
-      mkdir $self->cache_dir or Carp::croak "Failed to create cache_dir [$self->cache_dir]: $!\n";
-    }
-    return CHI->new( driver => 'File::GW2API', root_dir => $self->cache_dir );
-  }
-  return undef;
 }
 
 sub _retry(&;$) {
@@ -222,13 +184,13 @@ sub _check_language {
 }
 
 sub _api_request {
-  my ($self, $interface, $parms, $cache_age) = @_;
+  my ($self, $interface, $parms) = @_;
 
   my $parm_string = "";
 
   if ($parms) {
     my @parm_pairs;
-    foreach my $k (sort keys %$parms) {  # sort necessary so that cache keys are deterministic
+    foreach my $k (sort keys %$parms) {
       push @parm_pairs, "$k=$parms->{$k}";
     }
     $parm_string = '?' . join('&', @parm_pairs)
@@ -238,57 +200,36 @@ sub _api_request {
 
   my ($response, $decoded);
 
-  # Check in CHI cache first
-  $response = $self->cache->get($url) unless defined $self->{nocache};
+  $self->_set_status(0);
 
-  if (!defined $response) {
+  # Send GET request to API
+  $self->ua->timeout($self->{timeout});
 
-    $self->_set_status(0);
+  # Encapsulate the entire HTTP request / JSON decode / CHI store process in a
+  # _retry block. If any of the 3 steps fails,
+  $decoded = _retry {
+    # Make HTTP GET request (doesn't die automatically)
+    $response = $self->ua->get($url);
+    # warn $response->status_line() if $response->is_error();
+    die "Error getting URL [$url]:\n" . $response->status_line() if !defined($response);
+    $response = $response->decoded_content();
 
-    # If not in cache, send GET request to API
-    $self->ua->timeout($self->{timeout});
+    # ArenaNet uses UTF-8 encoding for text; this sets Perl's internal UTF-8
+    # flag for the returned data, inherited by all derived values.
+    utf8::decode($response);
 
-    # Encapsulate the entire HTTP request / JSON decode / CHI store process in a
-    # _retry block. If any of the 3 steps fails,
-    $decoded = _retry {
-      # Make HTTP GET request (doesn't die automatically)
-      $response = $self->ua->get($url);
-      # warn $response->status_line() if $response->is_error();
-      die "Error getting URL [$url]:\n" . $response->status_line() if !defined($response);
-      $response = $response->decoded_content();
+    # We have HTTP response, attempt to decode JSON (this dies on decode error, but the eval in _retry catches it)
+    my $ret = $self->json->decode($response);
 
-      # ArenaNet uses UTF-8 encoding for text; this sets Perl's internal UTF-8
-      # flag for the returned data, inherited by all derived values.
-      utf8::decode($response);
+    return $ret;
+  };
 
-      # We have HTTP response, attempt to decode JSON (this dies on decode error, but the eval in _retry catches it)
-      my $ret = $self->json->decode($response);
+  ###### need handler here in case _retry fails
 
-      # JSON is valid, now store response to cache
-      unless (defined $self->{nocache}) {
-        $cache_age = $self->{cache_age} unless defined $cache_age;
-        $self->cache->set($url, $response, $cache_age);
-      }
 
-      return $ret;
-    };
-
-    ###### need handler here in case _retry fails
-
-  } else {
-    # Decode cached JSON - cache can't be set unless JSON decodes successfully
-    # the first time, so this should always work, but do error-check anyway
-    eval { $decoded = $self->json->decode ($response) };
-    if ($@) {
-      Carp::carp "Error decoding JSON for URL [$url]:\n" . $@;
-      $self->cache->remove($url) unless defined $self->{nocache};
-      undef $response;
-    }
-  }
-
-  if (defined($decoded->{error})) {
-    Carp::carp "API error at [$url]";
-    $self->cache->remove($url) unless defined $self->{nocache};
+  if (ref($decoded) eq "HASH" && (defined($decoded->{error}) || defined($decoded->{text}) )) {
+    Carp::carp "API error at URL [$url]";
+    $self->_set_api_error(GuildWars2::API::Objects::Error->new($decoded));
   } else {
     $self->_set_status(1);
   }
@@ -309,174 +250,30 @@ sub build {
   return $json->{build_id};
 }
 
-sub _generic_names {
- my ($self, $interface, $lang) = @_;
-
-  if (defined $lang) {
-    $lang = $self->_check_language($lang);
-  } else {
-    $lang = $self->{language};
-  }
-
-  my ($raw, $json) = $self->_api_request($interface, { lang => $lang } );
-
-  return undef if !$self->is_success();
-
-  my $names = {};
-
-  foreach my $subject (@$json) {
-    my $id    = $subject->{id};
-    my $name  = $subject->{name};
-
-    $names->{$id} = $name;
-  }
-
-  return %$names;
-}
-
-sub event_names {
-  my ($self, $lang) = @_;
-
-  return $self->_generic_names($_url_event_names, $lang);
-}
-
-sub map_names {
-  my ($self, $lang) = @_;
-
-  return $self->_generic_names($_url_map_names, $lang);
-}
-
-sub world_names {
-  my ($self, $lang) = @_;
-
-  return $self->_generic_names($_url_world_names, $lang);
-}
-
-sub objective_names {
-  my ($self, $lang) = @_;
-
-  return $self->_generic_names($_url_objective_names, $lang);
-}
 
 
-sub event_state {
-  my ($self, $event_id, $world_id) = @_;
+###
+# /quaggans methods
 
-  # Sanity checks on event_id
-  Carp::croak("You must provide an event ID")
-    unless defined $event_id;
-
-  Carp::croak("Given event ID [$event_id] does not match event ID pattern")
-    unless $event_id =~ /^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$/i;
-
-  # Sanity check on world_id
-  Carp::croak("Given world ID [$world_id] is not a positive integer")
-    unless $world_id =~ /^\d+$/;
-
-  my ($raw, $json) = $self->_api_request($_url_events, { event_id => $event_id, world_id => $world_id }, $self->event_cache_age );
-
-  Carp::croak("No results for event ID [$event_id] and world ID [$world_id]")
-    unless @{$json->{events}} > 0;
-
-  return $json->{events}->[0]->{state};
-}
-
-
-sub event_state_by_world {
-  my ($self, $event_id) = @_;
-
-  # Sanity checks on event_id
-  Carp::croak("You must provide an event ID")
-    unless defined $event_id;
-
-  Carp::croak("Given event ID [$event_id] does not match event ID pattern")
-    unless $event_id =~ /^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$/i;
-
-  my ($raw, $json) = $self->_api_request($_url_events, { event_id => $event_id }, $self->event_cache_age );
-
-  Carp::croak("No results for event ID [$event_id]")
-    unless @{$json->{events}} > 0;
-
-  my $event_state_by_world = {};
-
-  foreach my $event (@{$json->{events}}) {
-    my $world_id  = $event->{world_id};
-    my $state     = $event->{state};
-
-    $event_state_by_world->{$world_id} = $state;
-  }
-
-  return %$event_state_by_world;
-}
-
-sub event_states_in_map {
-  my ($self, $map_id, $world_id) = @_;
-
-  # Sanity checks on map_id
-  Carp::croak("You must provide a map ID")
-    unless defined $map_id;
-
-  Carp::croak("Given map ID [$map_id] is not a positive integer")
-    unless $map_id =~ /^\d+$/;
-
-  # Sanity checks on world_id
-  Carp::croak("You must provide a world ID")
-    unless defined $world_id;
-
-  Carp::croak("Given world ID [$world_id] is not a positive integer")
-    unless $world_id =~ /^\d+$/;
-
-  my ($raw, $json) = $self->_api_request($_url_events, { map_id  => $map_id, world_id => $world_id }, $self->event_cache_age );
-
-  Carp::croak("No results for map ID [$map_id] and world ID [$world_id]")
-    unless @{$json->{events}} > 0;
-
-  my $event_states = {};
-
-  foreach my $event (@{$json->{events}}) {
-    my $event_id  = $event->{event_id};
-    my $state     = $event->{state};
-
-    $event_states->{$event_id} = $state;
-  }
-
-  return %$event_states;
-}
-
-
-sub wvw_matches {
+sub list_quaggans {
   my ($self) = @_;
 
-  my ($raw, $json) = $self->_api_request($_url_matches);
+  my ($raw, $json) = $self->_api_request($_url_quaggans);
 
-  return @{$json->{wvw_matches}};
+  return @{$json};
 }
 
 
-sub wvw_match_details {
-  my ($self, $match_id) = @_;
-
-  # Sanity checks on match_id
-  Carp::croak("You must provide a match ID")
-    unless defined $match_id;
-
-  Carp::croak("Given match ID [$match_id] is invalid")
-    unless $match_id =~ /^[12]-[1-9]$/i;
-
-  my ($raw, $json) = $self->_api_request($_url_match_details, { match_id => $match_id }, "5 minutes" );
-
-  return %$json;
-}
-
+###
+# Item methods
 
 sub list_items {
   my ($self) = @_;
 
-  my ($raw, $json) = $self->_api_request($_url_items, {}, "1 second");
+  my ($raw, $json) = $self->_api_request($_url_items);
 
-  return @{$json->{items}};
+  return @{$json};
 }
-
 
 sub get_item {
   my ($self, $item_id, $lang) = @_;
@@ -494,31 +291,365 @@ sub get_item {
     $lang = $self->{language};
   }
 
-  my ($raw, $json) = $self->_api_request($_url_item_details, { lang => $lang, item_id => $item_id } );
+  my ($raw, $json) = $self->_api_request($_url_items, { lang => $lang, ids => $item_id } );
 
   if ($self->is_success) {
-    # Convert CamelCase type value to lower_case subobject name
-    (my $tx = $json->{type}) =~ s/([a-z])([A-Z])/${1}_$2/g;
-    $tx = lc($tx);
-
-    # Standardize name of type-specific subobject
-    if (my $a = delete $json->{$tx}) { $json->{type_data} = $a; }
-
-    my $item = GuildWars2::API::Objects::Item->new($json);
-
-    # Store the original raw JSON response
+    # Have to calculate MD5 before object construction because Moose obliterates the original data
+    use bytes;
+    my $md5 = md5_hex($self->json->encode($json->[0]));
+    no bytes;
+    my $item = GuildWars2::API::Objects::Item->new($json->[0]);
+    $item->_set_md5($md5);
     $item->_set_json($raw);
-    my $eraw = $raw;
-    utf8::encode($eraw);
-    $item->_set_md5(md5_hex($eraw));
 
     return $item;
+
   } else {
-    Carp::carp("Given item ID [$item_id] returned an API error message");
-    my $error = GuildWars2::API::Objects::Error->new($json);
-    return $error;
+    return undef;
   }
 }
+
+
+sub get_items {
+  my ($self, $item_ids, $lang) = @_;
+
+  # Sanity checks on item_id
+  Carp::croak("You must provide a list of item IDs")
+    unless defined $item_ids;
+
+  foreach my $item_id (@$item_ids) {
+    Carp::croak("Given item ID [$item_id] is not a positive integer")
+      unless $item_id =~ /^\d+$/;
+  }
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_items, { lang => $lang, ids => join(',', @$item_ids) } );
+
+  if ($self->is_success) {
+    my @items;
+    foreach my $item_json (@$json) {
+      use bytes;
+      my $md5 = md5_hex($self->json->encode($item_json)."");
+      no bytes;
+      my $item = GuildWars2::API::Objects::Item->new($item_json);
+      $item->_set_md5($md5);
+
+      push(@items, $item);
+    }
+
+    return @items;
+
+  } else {
+    return undef;
+  }
+}
+
+sub get_item_page {
+  my ($self, $pagesize, $lang) = @_;
+
+  if (defined $pagesize) {
+    Carp::croak("Given pagesize [$pagesize] is not a positive integer")
+      unless $pagesize =~ /^\d+$/;
+  } else {
+    $pagesize = $self->{max_pagesize};
+  }
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_items, { lang => $lang, page => $self->{_curr_page}, page_size => $pagesize } );
+
+  if ($self->is_success) {
+    my @items;
+    foreach my $item_json (sort { $a->{id} <=> $b->{id} } @$json) {
+      use bytes;
+      my $md5 = md5_hex($self->json->encode($item_json));
+      no bytes;
+      my $item = GuildWars2::API::Objects::Item->new($item_json);
+      $item->_set_md5($md5);
+
+      push(@items, $item);
+    }
+
+    $self->_set_curr_page($self->{_curr_page}+1);
+
+    return @items;
+
+  } else {
+    return undef;
+  }
+}
+
+
+###
+# Recipe methods
+
+sub list_recipes {
+  my ($self) = @_;
+
+  my ($raw, $json) = $self->_api_request($_url_recipes);
+
+  return @{$json};
+}
+
+sub get_recipe {
+  my ($self, $recipe_id, $lang) = @_;
+
+  # Sanity checks on recipe_id
+  Carp::croak("You must provide a recipe ID")
+    unless defined $recipe_id;
+
+  Carp::croak("Given recipe ID [$recipe_id] is not a positive integer")
+    unless $recipe_id =~ /^\d+$/;
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_recipes, { lang => $lang, ids => $recipe_id } );
+
+  if ($self->is_success) {
+    # Have to calculate MD5 before object construction because Moose obliterates the original data
+    use bytes;
+    my $md5 = md5_hex($self->json->encode($json->[0]));
+    no bytes;
+    my $recipe = GuildWars2::API::Objects::Recipe->new($json->[0]);
+    $recipe->_set_md5($md5);
+    $recipe->_set_json($raw);
+
+    return $recipe;
+
+  } else {
+    return undef;
+  }
+}
+
+
+sub get_recipes {
+  my ($self, $recipe_ids, $lang) = @_;
+
+  # Sanity checks on recipe_id
+  Carp::croak("You must provide a list of recipe IDs")
+    unless defined $recipe_ids;
+
+  foreach my $recipe_id (@$recipe_ids) {
+    Carp::croak("Given recipe ID [$recipe_id] is not a positive integer")
+      unless $recipe_id =~ /^\d+$/;
+  }
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_recipes, { lang => $lang, ids => join(',', @$recipe_ids) } );
+
+  if ($self->is_success) {
+    my @recipes;
+    foreach my $recipe_json (@$json) {
+      use bytes;
+      my $md5 = md5_hex($self->json->encode($recipe_json)."");
+      no bytes;
+      my $recipe = GuildWars2::API::Objects::Recipe->new($recipe_json);
+      $recipe->_set_md5($md5);
+
+      push(@recipes, $recipe);
+    }
+
+    return @recipes;
+
+  } else {
+    return undef;
+  }
+}
+
+sub get_recipe_page {
+  my ($self, $pagesize, $lang) = @_;
+
+  if (defined $pagesize) {
+    Carp::croak("Given pagesize [$pagesize] is not a positive integer")
+      unless $pagesize =~ /^\d+$/;
+  } else {
+    $pagesize = $self->{max_pagesize};
+  }
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_recipes, { lang => $lang, page => $self->{_curr_page}, page_size => $pagesize } );
+
+  if ($self->is_success) {
+    my @recipes;
+    foreach my $recipe_json (sort { $a->{id} <=> $b->{id} } @$json) {
+      use bytes;
+      my $md5 = md5_hex($self->json->encode($recipe_json));
+      no bytes;
+      my $recipe = GuildWars2::API::Objects::Recipe->new($recipe_json);
+      $recipe->_set_md5($md5);
+
+      push(@recipes, $recipe);
+    }
+
+    $self->_set_curr_page($self->{_curr_page}+1);
+
+    return @recipes;
+
+  } else {
+    return undef;
+  }
+}
+
+
+
+###
+# Recipe methods
+
+sub list_skins {
+  my ($self) = @_;
+
+  my ($raw, $json) = $self->_api_request($_url_skins);
+
+  return @{$json};
+}
+
+sub get_skin {
+  my ($self, $skin_id, $lang) = @_;
+
+  # Sanity checks on skin_id
+  Carp::croak("You must provide a skin ID")
+    unless defined $skin_id;
+
+  Carp::croak("Given skin ID [$skin_id] is not a positive integer")
+    unless $skin_id =~ /^\d+$/;
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_skins, { lang => $lang, ids => $skin_id } );
+
+  if ($self->is_success) {
+    # Have to calculate MD5 before object construction because Moose obliterates the original data
+    use bytes;
+    my $md5 = md5_hex($self->json->encode($json->[0]));
+    no bytes;
+    my $skin = GuildWars2::API::Objects::Skin->new($json->[0]);
+    $skin->_set_md5($md5);
+    $skin->_set_json($raw);
+
+    return $skin;
+
+  } else {
+    return undef;
+  }
+}
+
+
+sub get_skins {
+  my ($self, $skin_ids, $lang) = @_;
+
+  # Sanity checks on skin_id
+  Carp::croak("You must provide a list of skin IDs")
+    unless defined $skin_ids;
+
+  foreach my $skin_id (@$skin_ids) {
+    Carp::croak("Given skin ID [$skin_id] is not a positive integer")
+      unless $skin_id =~ /^\d+$/;
+  }
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_skins, { lang => $lang, ids => join(',', @$skin_ids) } );
+
+  if ($self->is_success) {
+    my @skins;
+    foreach my $skin_json (@$json) {
+      use bytes;
+      my $md5 = md5_hex($self->json->encode($skin_json)."");
+      no bytes;
+      my $skin = GuildWars2::API::Objects::Skin->new($skin_json);
+      $skin->_set_md5($md5);
+
+      push(@skins, $skin);
+    }
+
+    return @skins;
+
+  } else {
+    return undef;
+  }
+}
+
+sub get_skin_page {
+  my ($self, $pagesize, $lang) = @_;
+
+  if (defined $pagesize) {
+    Carp::croak("Given pagesize [$pagesize] is not a positive integer")
+      unless $pagesize =~ /^\d+$/;
+  } else {
+    $pagesize = $self->{max_pagesize};
+  }
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_skins, { lang => $lang, page => $self->{_curr_page}, page_size => $pagesize } );
+
+  if ($self->is_success) {
+    my @skins;
+    foreach my $skin_json (sort { $a->{id} <=> $b->{id} } @$json) {
+      use bytes;
+      my $md5 = md5_hex($self->json->encode($skin_json));
+      no bytes;
+      my $skin = GuildWars2::API::Objects::Skin->new($skin_json);
+      $skin->_set_md5($md5);
+
+      push(@skins, $skin);
+    }
+
+    $self->_set_curr_page($self->{_curr_page}+1);
+
+    return @skins;
+
+  } else {
+    return undef;
+  }
+}
+
+
+
+
+sub prefix_lookup {
+  my ($self, $item) = @_;
+  return $item->_prefix_lookup($self->_prefix_map);
+}
+
+1;
+__END__
+
 
 
 sub list_skins {
@@ -573,45 +704,6 @@ sub get_skin {
 }
 
 
-sub list_recipes {
-  my ($self) = @_;
-
-  my ($raw, $json) = $self->_api_request($_url_recipes, {}, "1 second");
-
-  return @{$json->{recipes}};
-}
-
-
-sub get_recipe {
-  my ($self, $recipe_id) = @_;
-
-  # Sanity checks on recipe_id
-  Carp::croak("You must provide a recipe ID")
-    unless defined $recipe_id;
-
-  Carp::croak("Given recipe ID [$recipe_id] is not a positive integer")
-    unless $recipe_id =~ /^\d+$/;
-
-  my ($raw, $json) = $self->_api_request($_url_recipe_details, { recipe_id => $recipe_id } );
-
-  if ($self->is_success) {
-    my $recipe = GuildWars2::API::Objects::Recipe->new( $json );
-
-    # Store the original raw JSON response
-    $recipe->_set_json($raw);
-    my $eraw = $raw;
-    utf8::encode($eraw);
-    $recipe->_set_md5(md5_hex($eraw));
-
-    return $recipe;
-  } else {
-    Carp::carp("Given recipe ID [$recipe_id] returned an API error message");
-    my $error = GuildWars2::API::Objects::Error->new($json);
-    return $error;
-  }
-}
-
-
 sub get_colors {
   my ($self, $lang) = @_;
 
@@ -629,31 +721,6 @@ sub get_colors {
   }
 
   return %color_objs;
-}
-
-
-sub get_guild {
-  my ($self, $guild_id) = @_;
-
-  # Sanity checks on guild_id
-  Carp::croak("You must provide a guild ID or guild name")
-    unless defined $guild_id;
-
-  my $id_or_name;
-  if ($guild_id =~ /^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$/i) {
-    $id_or_name = "guild_id";
-  } else {
-    $guild_id =~ s/ /%20/g;
-    $id_or_name = "guild_name";
-  }
-
-  my ($raw, $json) = $self->_api_request($_url_guild_details, { $id_or_name => $guild_id });
-
-  return undef if !$self->is_success();
-
-  my $guild_obj = GuildWars2::API::Objects::Guild->new( $json );
-
-  return $guild_obj;
 }
 
 
@@ -685,359 +752,6 @@ sub get_maps {
   return %map_tree;
 }
 
-sub prefix_lookup {
-  my ($self, $item) = @_;
-  return $item->_prefix_lookup($self->_prefix_map);
-}
-
-###
-# Experimental stuff past here
-###
-
-
-
-sub get_icon_url {
-  my ($self, $_obj, $_format) = @_;
-
-  # Default to png format
-  $_format = "png" if !defined($_format);
-
-  Carp::croak("Unrecognized icon format [$_format]; valid formats are jpg and png.")
-    if ($_format ne "png" && $_format ne "jpg");
-
-  return $_base_render_url . '/' . $_obj->{icon_signature} . '/' . $_obj->{file_id} . '.' . $_format;
-}
-
-sub get_icon {
-  my ($self, $_format) = @_;
-
-  my $render_url = $self->get_icon_url($_format);
-
-### build an icon cache similar to API response cache
-}
-
-
-
 1;
-
-=pod
-
-=head1 NAME
-
-GuildWars2::API - An interface library for the Guild Wars 2 API
-
-=head1 SYNOPSIS
-
- use GuildWars2::API;
-
- $api = GuildWars2::API->new();
-
- # Check the current state of an event on all worlds
-
- %event_states = $api->event_state_by_world($event_id);
-
- foreach my $world_id (keys %event_states) {
-     my $state = $event_states{$world_id};
-
-     print "$world_id : $state\n";
- }
-
- # Lookup the attribute bonuses on a weapon
-
- %item_details = $api->item_details($item_id);
-
- $attributes_ref = %item_details{weapon}->{attributes};
-
- foreach $attribute (@$attributes_ref) {
-     ($attr_name, $attr_value) =
-          ($attribute->{attribute}, $attribute->{modifier});
-
-     print "+$attr_value $attr_name\n";
- }
-
-=head1 DESCRIPTION
-
-GuildWars2::API is a class module that provides a set of standard interfaces to
-the L<Guild Wars 2 API|http://wiki.guildwars2.com/wiki/API:Main>.
-
-=head1 Constructor
-
-=over
-
-=item $api = GuildWars2::API->new
-=item $api = GuildWars2::API->new( key => value, ... )
-
-This method constructs a new C<GuildWars2::API> object and returns it. Key/value
-pairs of configuration options may be provided, which then become class
-attributes.
-
-Each of the attributes can be accessed via an eponymous class method. Most can
-also be assigned new values in this manner, although a few attributes are
-designated read-only.
-
- my $api = GuildWars2::API->new( timeout => 60 );
-
- print $api->timeout;   # 60
-
- $api->timeout(180);
-
- print $api->timeout;   # 180
-
-=over
-
-=item timeout [INT]
-
-The length of time, in seconds, to wait for a response from the API. Defaults to
-30.
-
-=item retries [INT]
-
-The number of times to attempt an API request before dying. Defaults to 3.
-
-=item language [STRING]
-
-The language code to use for all API requests. Defaults to 'en', other
-supported languages are 'de', 'es', and 'fr'. This setting can be overridden
-when calling individual API methods.
-
-=item nocache [BOOL]
-
-I<Read-only>. Disable local caching of API responses. Defaults to undef. Using
-this in combination with any of the following cache options will cause an error.
-
-=item cache_dir [STRING]
-
-I<Read-only>. The local directory to use as the cache location. Can be given as
-a full path or relative to the script execution directory. Defaults to
-'./gw2api-cache' and will attempt to create the directory if it does not exist.
-
-=item cache_age [DURATION]
-
-Length of time after which the cached responses will expire. Defaults to '1
-day'. Accepted values are strings consisting of an integer followed by a time
-unit, e.g. '2 hours' or '10 seconds' etc.
-
-This applies to I<most> of the APIs; the following *_cache_age parameters
-override this setting for specific APIs.
-
-=item event_cache_age [DURATION]
-
-Length of time after which the cached version of I<event state> responses will
-expire. Defaults to '30 seconds'.
-
-=item item_cache_age [DURATION]
-
-Length of time after which the cached version of I<item_details> and
-I<recipe_details> responses will expire. Defaults to '14 days' - the usual time
-between major releases.
-
-=item wvw_cache_age [DURATION]
-
-Length of time after which the cached version of I<WvW match detail> responses
-will expire. Defaults to '5 seconds'.
-
-=back
-
-=back
-
-=head2 Subclassed objects
-
-The following classes are loaded into the GuildWars2::API class and can be
-accessed as "subobjects" of the main C<$api> object.
-
-=over
-
-=item L<CHI> - $api->cache
-
-Interface to the file cache handler. Used for storing API responses locally.
-
-=item L<JSON::PP> - $api->json
-
-Interface for encoding/decoding JSON strings. Used to decode the JSON responses
-from the API.
-
-=item L<LWP::UserAgent> - $api->ua
-
-HTTP interface. Used for interacting with the API.
-
-=back
-
-=head1 Methods
-
-=head2 API accessor methods
-
-=over
-
-=item $api->build
-
-Returns the current Guild Wars 2 build number. Useful for tracking when a game
-update is released, since the build number will change.
-
-=item $api->event_names
-=item $api->event_names( $lang )
-
-=item $api->map_names
-=item $api->map_names( $lang )
-
-=item $api->world_names
-=item $api->world_names( $lang )
-
-=item $api->objective_names
-=item $api->objective_names( $lang )
-
-Each of these methods returns a hash, keyed by the event/map/etc. ID, containing
-the names corresponding to those IDs. Pass a language code as an argument to
-override the current default language.
-
-=item $api->event_state( $event_id, $world_id )
-
-Returns a string containing the current state of a specific event on a specific
-world. Event state will be one of the following values (definitions are from
-L<the official API documentation|http://wiki.guildwars2.com/wiki/API:1/events>):
-
- State        Meaning
- ------------ ---------------------------------------------------------
- Active       The event is running now.
- Inactive     The event is not running now.
- Success      The event has succeeded.
- Fail         The event has failed.
- Warmup       The event is inactive, and will only become active once
-              certain criteria are met.
- Preparation  The criteria for the event to start have been met, but
-              certain activities (such as an NPC dialogue) have not
-              completed yet. After the activites have been completed,
-              the event will become Active.
-
-=item $api->event_state_by_world( $event_id )
-
-Returns a hash, keyed by world ID, containing the current state of the given
-event on each world.
-
-=item $api->event_states_in_map( $map_id, $world_id )
-
-Returns a hash, keyed by event ID, containing the current state of all events
-occurring within a specific map on a specific world.
-
-=item $api->wvw_matches
-
-Returns an array containing basic information on the current WvW matches. Each
-array element is a hash with the following structure:
-
- (
-   wvw_match_id   => [STR],     # Match ID
-   red_world_id   => [INT],     # World ID of the red world
-   blue_world_id  => [INT],     # World ID of the blue world
-   green_world_id => [INT],     # World ID of the green world
-   start_time     => [STRING],  # Date/time that current match started (UTC)
-   end_time       => [STRING],  # Date/time that current match ended (UTC)
- )
-
-=item $api->wvw_match_details( $match_id )
-
-Returns a hash containing detailed information on a specific WvW match. The hash
-has the following structure:
-
- (
-   match_id   => [STRING],  # Match ID
-   scores     =>
-     [
-       [INT],               # Red world total score
-       [INT],               # Green world total score
-       [INT]                # Blue world total score
-     ],
-   maps       =>            # Array of map data
-     [
-       {
-         type       => [STRING],  # Map type (RedHome, GreenHome, BlueHome, Center)
-         scores     =>
-           [
-             [INT],               # Red world map score
-             [INT],               # Green world map score
-             [INT]                # Blue world map score
-           ],
-         objectives =>            # Array of objectives in the map
-           [
-             {
-               id          => [INT],    # Objective ID
-               owner       => [STRING], # Current owner of the objective (Red, Blue, Green)
-               owner_guild => [STRING], # Guild ID that has claimed the objective
-                                        #   (only present if objective has been claimed)
-             },
-             ...                  # Repeat for all objectives in the map
-           ]
-       },
-       ...                  # Repeat for each of 4 maps
-     ],
- )
-
-=item $api->list_items
-
-Returns an array containing all "discovered" item IDs.
-
-=item $api->get_item( $item_id )
-=item $api->get_item( $item_id, $lang )
-
-Retrieves data for the given item_id (in the given language or the current
-default) and returns a GuildWars2::API::Objects::Item object.
-
-=item $api->list_recipes
-
-Returns an array containing all "discovered" recipe IDs.
-
-=item $api->get_recipe( $recipe_id )
-=item $api->get_recipe( $recipe_id, $lang )
-
-Retrieves data for the given recipe_id (in the given language or the current
-default) and returns a GuildWars2::API::Objects::Recipe object.
-
-=item $api->get_colors
-=item $api->get_colors( $lang )
-
-Returns a hash, keyed on color_id, containing color information for all colors
-in the game. Each hash element is a GuildWars2::API::Objects::Color object.
-
-=item $api->get_guild( $guild_id )
-=item $api->get_guild( $guild_name )
-
-Retrieves data for the given guild ID or guild name and returns a
-GuildWars2::API::Objects::Guild object. If the argument doesn't match the
-pattern of a guild ID, it is assumed to be a guild name.
-
-=item $api->get_maps
-=item $api->get_maps( $continent_id, $floor_id, $lang )
-
-Retreives a hash, keyed on region_id, containing map information on the world
-of Tyria. Each has element is a GuildWars2::API::Objects::Region object.
-
-=back
-
-=head2 Utility methods
-
-=over
-
-=item $api->clean_item_cache
-
-Cleans up all cached versions of I<item_details> and I<recipe_details> responses
-that are older than C<item_cache_age>.
-
-=item $api->empty_item_cache
-
-Cleans up all cached versions of I<item_details> and I<recipe_details> responses
-regardless of age. Useful to run whenever the build number changes.
-
-=back
-
-=head1 Author
-
-Tony Tauer, E<lt>dr.ishmael[at]gmail.comE<gt>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright 2013 by Tony Tauer
-
-This library is free software; you can redistribute it and/or modify it under
-the same terms as Perl itself.
-
-=cut
 
 __END__

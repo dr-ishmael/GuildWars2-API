@@ -1,9 +1,7 @@
 use Modern::Perl '2014';
 
 package GuildWars2::API::Objects;
-BEGIN {
-  $GuildWars2::API::Objects::VERSION = '0.50';
-}
+
 use Moose;
 
 =pod
@@ -18,10 +16,10 @@ GuildWars2::API. Some objects also have methods attached to them.
 See the individual modules for documentation of these subclasses.
 
 =item * GuildWars2::API::Objects::Color
-=item * GuildWars2::API::Objects::Guild
 =item * GuildWars2::API::Objects::Item
 =item * GuildWars2::API::Objects::Map
 =item * GuildWars2::API::Objects::Recipe
+=item * GuildWars2::API::Objects::Skin
 
 This module defines a role for use by multiple object types.
 
@@ -29,14 +27,13 @@ This module defines a role for use by multiple object types.
 
 =cut
 
-use GuildWars2::API::Objects::Color;
-use GuildWars2::API::Objects::Guild;
+# use GuildWars2::API::Objects::Color;
+use GuildWars2::API::Objects::Error;
 use GuildWars2::API::Objects::Item;
-use GuildWars2::API::Objects::Map;
-use GuildWars2::API::Objects::Recipe;
-use GuildWars2::API::Objects::Skin;
+# use GuildWars2::API::Objects::Map;
+# use GuildWars2::API::Objects::Recipe;
+# use GuildWars2::API::Objects::Skin;
 
 use GuildWars2::API::Objects::Linkable;
 
 1;
-
