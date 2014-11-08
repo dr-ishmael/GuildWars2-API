@@ -6,14 +6,11 @@ BEGIN {
 }
 use Carp ();
 use Digest::MD5 qw(md5_hex);
-use File::Find;
 use JSON::PP;
-use List::Util qw/max min/;
 use LWP::UserAgent;
 
 use Moose;
-use Moose::Util qw( with_traits );
-use Moose::Util::TypeConstraints;
+use Moose::Util::TypeConstraints; # required for enum constraints
 
 use GuildWars2::API::Objects;
 use GuildWars2::API::Utils;
@@ -294,13 +291,12 @@ sub get_item {
   my ($raw, $json) = $self->_api_request($_url_items, { lang => $lang, ids => $item_id } );
 
   if ($self->is_success) {
-    # Have to calculate MD5 before object construction because Moose obliterates the original data
+    # Have to calculate MD5 before object construction because the constructor obliterates the original data
     use bytes;
     my $md5 = md5_hex($self->json->encode($json->[0]));
     no bytes;
     my $item = GuildWars2::API::Objects::Item->new($json->[0]);
     $item->_set_md5($md5);
-    $item->_set_json($raw);
 
     return $item;
 
@@ -336,8 +332,12 @@ sub get_items {
       use bytes;
       my $md5 = md5_hex($self->json->encode($item_json)."");
       no bytes;
-      my $item = GuildWars2::API::Objects::Item->new($item_json);
-      $item->_set_md5($md5);
+#      my $item = GuildWars2::API::Objects::Item->new($item_json);
+#      $item->_set_md5($md5);
+      my $item = {
+        json => $item_json,
+        md5 => $md5,
+      };
 
       push(@items, $item);
     }
@@ -419,13 +419,12 @@ sub get_recipe {
   my ($raw, $json) = $self->_api_request($_url_recipes, { lang => $lang, ids => $recipe_id } );
 
   if ($self->is_success) {
-    # Have to calculate MD5 before object construction because Moose obliterates the original data
+    # Have to calculate MD5 before object construction because the constructor obliterates the original data
     use bytes;
     my $md5 = md5_hex($self->json->encode($json->[0]));
     no bytes;
     my $recipe = GuildWars2::API::Objects::Recipe->new($json->[0]);
     $recipe->_set_md5($md5);
-    $recipe->_set_json($raw);
 
     return $recipe;
 
@@ -545,13 +544,12 @@ sub get_skin {
   my ($raw, $json) = $self->_api_request($_url_skins, { lang => $lang, ids => $skin_id } );
 
   if ($self->is_success) {
-    # Have to calculate MD5 before object construction because Moose obliterates the original data
+    # Have to calculate MD5 before object construction because the constructor obliterates the original data
     use bytes;
     my $md5 = md5_hex($self->json->encode($json->[0]));
     no bytes;
     my $skin = GuildWars2::API::Objects::Skin->new($json->[0]);
     $skin->_set_md5($md5);
-    $skin->_set_json($raw);
 
     return $skin;
 

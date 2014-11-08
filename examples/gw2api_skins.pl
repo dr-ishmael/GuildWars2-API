@@ -451,10 +451,28 @@ sub worker
 
       # Replace base skin data
       my $sth_replace_skin_data = $dbh->prepare('
-          replace into skin_tb (skin_id, skin_name, skin_type, skin_subtype, skin_description, flag_hideiflocked, flag_nocost, flag_showinwardrobe, skin_file_id, skin_file_signature, armor_race, armor_class, weapon_damage_type, skin_warnings, skin_md5, last_seen_build_id, last_seen_dt, last_updt_build_id, last_updt_dt)
+          insert into skin_tb (skin_id, skin_name, skin_type, skin_subtype, skin_description, flag_hideiflocked, flag_nocost, flag_showinwardrobe, skin_icon_url, armor_race, armor_class, weapon_damage_type, skin_warnings, skin_md5, first_seen_build_id, first_seen_dt, last_seen_build_id, last_seen_dt, last_updt_build_id, last_updt_dt)
           values ' .
-          join(',', ("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, ?, current_timestamp)") x $changed_skin_cnt )
-        ) or die "Can't prepare statement: $DBI::errstr";
+          join(',', ("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, ?, current_timestamp, ?, current_timestamp)") x $changed_skin_cnt )
+        . 'on duplicate key update
+          skin_name=VALUES(skin_name)
+         ,skin_type=VALUES(skin_type)
+         ,skin_subtype=VALUES(skin_subtype)
+         ,skin_description=VALUES(skin_description)
+         ,flag_hideiflocked=VALUES(flag_hideiflocked)
+         ,flag_nocost=VALUES(flag_nocost)
+         ,flag_showinwardrobe=VALUES(flag_showinwardrobe)
+         ,skin_icon_url=VALUES(skin_icon_url)
+         ,armor_race=VALUES(armor_race)
+         ,armor_class=VALUES(armor_class)
+         ,weapon_damage_type=VALUES(weapon_damage_type)
+         ,skin_warnings=VALUES(skin_warnings)
+         ,skin_md5=VALUES(skin_md5)
+         ,last_seen_build_id=VALUES(last_seen_build_id)
+         ,last_seen_dt=current_timestamp
+         ,last_updt_build_id=VALUES(last_updt_build_id)
+         ,last_updt_dt=current_timestamp
+        ') or die "Can't prepare statement: $DBI::errstr";
 
       $sth_replace_skin_data->execute(@changed_skin_data) or die "Can't execute statement: $DBI::errstr";
 

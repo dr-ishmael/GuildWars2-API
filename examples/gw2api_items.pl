@@ -15,9 +15,11 @@ use GuildWars2::API::Utils;
 
 my $VERBOSE = 0;
 
+my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst);
+
 ###
 # Set up API interface
-my $boss_api = GuildWars2::API->new( nocache => 1 );
+my $boss_api = GuildWars2::API->new();
 
 # Read config info for database
 # This file contains a single line, of the format:
@@ -25,7 +27,7 @@ my $boss_api = GuildWars2::API->new( nocache => 1 );
 #
 # where <database_type> corresponds to the DBD module for your database.
 #
-my @db_keys = qw(type name schema pass);
+my @db_keys = qw(type schema user pass);
 my @db_vals;
 open(DB,"database_info.conf") or die "Can't open db info file: $!";
 while (<DB>) {
@@ -37,8 +39,13 @@ close(DB);
 my %db :shared;
 @db{@db_keys} = @db_vals;
 
+if (defined($ARGV[0]) && $ARGV[0] eq "test") {
+  $db{'schema'} = $db{'schema'} . "_test";
+}
+
+
 # Connect to database
-my $boss_dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'name'}, $db{'schema'}, $db{'pass'},{mysql_enable_utf8 => 1})
+my $boss_dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'schema'}, $db{'user'}, $db{'pass'},{mysql_enable_utf8 => 1})
   or die "Can't connect: $DBI::errstr\n";
 
 
@@ -74,7 +81,7 @@ if ($curr_build_id > $max_build_id) {
 my %item_md5s :shared;
 
 say "Retrieving local MD5 data..." if $VERBOSE;
-my $sth_item_md5 = $boss_dbh->prepare('select item_id, item_md5 from item_tb')
+my $sth_item_md5 = $boss_dbh->prepare("select item_id, item_md5 from item_tb")
   or die "Can't prepare statement: $DBI::errstr";
 
 $sth_item_md5->execute() or die "Can't execute statement: $DBI::errstr";
@@ -171,8 +178,8 @@ my $i = 0;
 my @new_item_arr;
 my @updt_item_arr;
 
-#my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
-#say "Entering threaded mode at " . sprintf("%02d:%02d:%02d", $hour, $min, $sec);
+($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+say "Entering threaded mode at " . sprintf("%02d:%02d:%02d", $hour, $min, $sec);
 
 my $progress = Term::ProgressBar->new({name => 'Items processed', count => $tot_items, fh => \*STDOUT});
 $progress->minor(0);
@@ -213,6 +220,9 @@ $work_queues{$_}->end() foreach keys(%work_queues);
 
 # Wait for all the threads to finish
 $_->join() foreach threads->list();
+
+($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+say "All threads complete at " . sprintf("%02d:%02d:%02d", $hour, $min, $sec);
 
 # Set first_seen_build_id for all new items
 my $sth_new_item_updt = $boss_dbh->prepare('
@@ -313,11 +323,11 @@ sub worker
   };
 
   # Create our very own API object
-  my $api = GuildWars2::API->new( nocache => 1 );
+  my $api = GuildWars2::API->new();
 
   # Open a database connection
   say $log "Opening database connection." if $VERBOSE;
-  my $dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'name'}, $db{'schema'}, $db{'pass'},{mysql_enable_utf8 => 1})
+  my $dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'schema'}, $db{'user'}, $db{'pass'},{mysql_enable_utf8 => 1})
     or die "Can't connect: $DBI::errstr\n";
   say $log "\tDatabase connection established." if $VERBOSE;
 
@@ -362,30 +372,30 @@ sub worker
 
     my @items = $api->get_items(\@item_ids);
 
-    if ($items[0]->can('error')) {
-      say STDERR "API returned an error! Aborting item...";
-      next;
-      ### might need more code here to "clean up" database on errors ###
-    }
+    #if ($items[0]->can('error')) {
+    #  say STDERR "API returned an error! Aborting item...";
+    #  next;
+    #  ### might need more code here to "clean up" database on errors ###
+    #}
 
-    foreach my $item (@items) {
+    foreach my $i (@items) {
 
       my $change_flag = 0;
-      my $item_id = $item->{item_id};
+      my $item_id = $i->{json}->{id};
 
       say $log "Looking up existing MD5..." if $VERBOSE;
       my $old_md5 = $item_md5s{$item_id};
       if ($old_md5) {
         say $log "\tExisting MD5 is $old_md5." if $VERBOSE;
 
-        if ($old_md5 eq $item->raw_md5) {
+        if ($old_md5 eq $i->{md5}) {
           # No change
           say $log "MD5 unchanged, will update last_seen_dt." if $VERBOSE;
           push @seen_item_ids, $item_id;
         } else {
-          say $log "New MD5 is ".$item->raw_md5.", item data has changed." if $VERBOSE;
-
+          say $log "New MD5 is ".$i->{md5}.", item data has changed." if $VERBOSE;
           $change_flag = 1;
+          push @changed_item_ids, $item_id;
           $updt_q->enqueue($item_id);
         }
       } else {
@@ -397,6 +407,8 @@ sub worker
 
       if ($change_flag) {
         my $item_prefix;
+
+        my $item = GuildWars2::API::Objects::Item->new($i->{json});
 
         if (in($item->item_type, [ 'Armor', 'Back', 'Trinket', 'Weapon', ] ) ) {
           say $log "Item is equippable, determining prefix..." if $VERBOSE;
@@ -416,23 +428,23 @@ sub worker
           ,$item->rarity
           ,$item->description
           ,$item->vendor_value
-          ,$item->game_type_flags->{'Activity'}
-          ,$item->game_type_flags->{'Dungeon'}
-          ,$item->game_type_flags->{'Pve'}
-          ,$item->game_type_flags->{'Pvp'}
-          ,$item->game_type_flags->{'PvpLobby'}
-          ,$item->game_type_flags->{'Wvw'}
-          ,$item->item_flags->{'AccountBindOnUse'}
-          ,$item->item_flags->{'AccountBound'}
-          ,$item->item_flags->{'HideSuffix'}
-          ,$item->item_flags->{'NoMysticForge'}
-          ,$item->item_flags->{'NoSalvage'}
-          ,$item->item_flags->{'NoSell'}
-          ,$item->item_flags->{'NotUpgradeable'}
-          ,$item->item_flags->{'NoUnderwater'}
-          ,$item->item_flags->{'SoulbindOnAcquire'}
-          ,$item->item_flags->{'SoulBindOnUse'}
-          ,$item->item_flags->{'Unique'}
+          ,$item->game_type_flags->Activity
+          ,$item->game_type_flags->Dungeon
+          ,$item->game_type_flags->Pve
+          ,$item->game_type_flags->Pvp
+          ,$item->game_type_flags->PvpLobby
+          ,$item->game_type_flags->Wvw
+          ,$item->item_flags->AccountBindOnUse
+          ,$item->item_flags->AccountBound
+          ,$item->item_flags->HideSuffix
+          ,$item->item_flags->NoMysticForge
+          ,$item->item_flags->NoSalvage
+          ,$item->item_flags->NoSell
+          ,$item->item_flags->NotUpgradeable
+          ,$item->item_flags->NoUnderwater
+          ,$item->item_flags->SoulbindOnAcquire
+          ,$item->item_flags->SoulBindOnUse
+          ,$item->item_flags->Unique
           ,$item->icon_url
           ,$item->default_skin
           ,$item_prefix
@@ -462,7 +474,8 @@ sub worker
           ,$item->min_strength
           ,$item->max_strength
           ,$item->item_warnings
-          ,$item->md5
+          ,$i->{md5}
+          ,$curr_build_id
           ,$curr_build_id
           ,$curr_build_id
         );
@@ -520,10 +533,69 @@ sub worker
 
       # Replace base item data
       my $sth_replace_item_data = $dbh->prepare('
-          replace into item_tb (item_id, item_name, item_type, item_subtype, item_level, item_rarity, item_description, vendor_value, game_type_activity, game_type_dungeon, game_type_pve, game_type_pvp, game_type_pvplobby, game_type_wvw, flag_accountbindonuse, flag_accountbound, flag_hidesuffix, flag_nomysticforge, flag_nosalvage, flag_nosell, flag_notupgradeable, flag_nounderwater, flag_soulbindonacquire, flag_soulbindonuse, flag_unique, icon_url, default_skin, equip_prefix, equip_infusion_slot_1_type, equip_infusion_slot_1_item_id, equip_infusion_slot_2_type, equip_infusion_slot_2_item_id, suffix_item_id, second_suffix_item_id, buff_skill_id, buff_description, armor_class, armor_race, armor_defense, bag_size, bag_invisible, food_duration_sec, food_description, tool_charges, unlock_type, unlock_color_id, unlock_recipe_id, upgrade_type, upgrade_suffix, upgrade_infusion_type, weapon_damage_type, weapon_min_strength, weapon_max_strength, item_warnings, item_md5, last_seen_build_id, last_seen_dt, last_updt_build_id, last_updt_dt)
+          insert into item_tb (item_id, item_name, item_type, item_subtype, item_level, item_rarity, item_description, vendor_value, game_type_activity, game_type_dungeon, game_type_pve, game_type_pvp, game_type_pvplobby, game_type_wvw, flag_accountbindonuse, flag_accountbound, flag_hidesuffix, flag_nomysticforge, flag_nosalvage, flag_nosell, flag_notupgradeable, flag_nounderwater, flag_soulbindonacquire, flag_soulbindonuse, flag_unique, icon_url, default_skin, equip_prefix, equip_infusion_slot_1_type, equip_infusion_slot_1_item_id, equip_infusion_slot_2_type, equip_infusion_slot_2_item_id, suffix_item_id, second_suffix_item_id, buff_skill_id, buff_description, armor_class, armor_race, armor_defense, bag_size, bag_invisible, food_duration_sec, food_description, tool_charges, unlock_type, unlock_color_id, unlock_recipe_id, upgrade_type, upgrade_suffix, upgrade_infusion_type, weapon_damage_type, weapon_min_strength, weapon_max_strength, item_warnings, item_md5, first_seen_build_id, first_seen_dt, last_seen_build_id, last_seen_dt, last_updt_build_id, last_updt_dt)
           values ' .
-          join(',', ("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, ?, current_timestamp)") x $changed_item_cnt )
-        ) or die "Can't prepare statement: $DBI::errstr";
+          join(',', ("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, ?, current_timestamp, ?, current_timestamp)") x $changed_item_cnt )
+      . 'on duplicate key update
+        item_name=VALUES(item_name)
+       ,item_type=VALUES(item_type)
+       ,item_subtype=VALUES(item_subtype)
+       ,item_level=VALUES(item_level)
+       ,item_rarity=VALUES(item_rarity)
+       ,item_description=VALUES(item_description)
+       ,vendor_value=VALUES(vendor_value)
+       ,game_type_activity=VALUES(game_type_activity)
+       ,game_type_dungeon=VALUES(game_type_dungeon)
+       ,game_type_pve=VALUES(game_type_pve)
+       ,game_type_pvp=VALUES(game_type_pvp)
+       ,game_type_pvplobby=VALUES(game_type_pvplobby)
+       ,game_type_wvw=VALUES(game_type_wvw)
+       ,flag_accountbindonuse=VALUES(flag_accountbindonuse)
+       ,flag_accountbound=VALUES(flag_accountbound)
+       ,flag_hidesuffix=VALUES(flag_hidesuffix)
+       ,flag_nomysticforge=VALUES(flag_nomysticforge)
+       ,flag_nosalvage=VALUES(flag_nosalvage)
+       ,flag_nosell=VALUES(flag_nosell)
+       ,flag_notupgradeable=VALUES(flag_notupgradeable)
+       ,flag_nounderwater=VALUES(flag_nounderwater)
+       ,flag_soulbindonacquire=VALUES(flag_soulbindonacquire)
+       ,flag_soulbindonuse=VALUES(flag_soulbindonuse)
+       ,flag_unique=VALUES(flag_unique)
+       ,icon_url=VALUES(icon_url)
+       ,default_skin=VALUES(default_skin)
+       ,equip_prefix=VALUES(equip_prefix)
+       ,equip_infusion_slot_1_type=VALUES(equip_infusion_slot_1_type)
+       ,equip_infusion_slot_1_item_id=VALUES(equip_infusion_slot_1_item_id)
+       ,equip_infusion_slot_2_type=VALUES(equip_infusion_slot_2_type)
+       ,equip_infusion_slot_2_item_id=VALUES(equip_infusion_slot_2_item_id)
+       ,suffix_item_id=VALUES(suffix_item_id)
+       ,second_suffix_item_id=VALUES(second_suffix_item_id)
+       ,buff_skill_id=VALUES(buff_skill_id)
+       ,buff_description=VALUES(buff_description)
+       ,armor_class=VALUES(armor_class)
+       ,armor_race=VALUES(armor_race)
+       ,armor_defense=VALUES(armor_defense)
+       ,bag_size=VALUES(bag_size)
+       ,bag_invisible=VALUES(bag_invisible)
+       ,food_duration_sec=VALUES(food_duration_sec)
+       ,food_description=VALUES(food_description)
+       ,tool_charges=VALUES(tool_charges)
+       ,unlock_type=VALUES(unlock_type)
+       ,unlock_color_id=VALUES(unlock_color_id)
+       ,unlock_recipe_id=VALUES(unlock_recipe_id)
+       ,upgrade_type=VALUES(upgrade_type)
+       ,upgrade_suffix=VALUES(upgrade_suffix)
+       ,upgrade_infusion_type=VALUES(upgrade_infusion_type)
+       ,weapon_damage_type=VALUES(weapon_damage_type)
+       ,weapon_min_strength=VALUES(weapon_min_strength)
+       ,weapon_max_strength=VALUES(weapon_max_strength)
+       ,item_warnings=VALUES(item_warnings)
+       ,item_md5=VALUES(item_md5)
+       ,last_seen_build_id=VALUES(last_seen_build_id)
+       ,last_seen_dt=current_timestamp
+       ,last_updt_build_id=VALUES(last_updt_build_id)
+       ,last_updt_dt=current_timestamp
+       ') or die "Can't prepare statement: $DBI::errstr";
 
       $sth_replace_item_data->execute(@changed_item_data) or die "Can't execute statement: $DBI::errstr";
 

@@ -17,7 +17,7 @@ my $VERBOSE = 0;
 
 ###
 # Set up API interface
-my $boss_api = GuildWars2::API->new( nocache => 1 );
+my $boss_api = GuildWars2::API->new();
 
 # Read config info for database
 # This file contains a single line, of the format:
@@ -25,7 +25,7 @@ my $boss_api = GuildWars2::API->new( nocache => 1 );
 #
 # where <database_type> corresponds to the DBD module for your database.
 #
-my @db_keys = qw(type name schema pass);
+my @db_keys = qw(type schema user pass);
 my @db_vals;
 open(DB,"database_info.conf") or die "Can't open db info file: $!";
 while (<DB>) {
@@ -37,8 +37,13 @@ close(DB);
 my %db :shared;
 @db{@db_keys} = @db_vals;
 
+if (defined($ARGV[0]) && $ARGV[0] eq "test") {
+  $db{'schema'} = $db{'schema'} . "_test";
+}
+
+
 # Connect to database
-my $boss_dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'name'}, $db{'schema'}, $db{'pass'},{mysql_enable_utf8 => 1})
+my $boss_dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'schema'}, $db{'user'}, $db{'pass'},{mysql_enable_utf8 => 1})
   or die "Can't connect: $DBI::errstr\n";
 
 
@@ -313,11 +318,11 @@ sub worker
   };
 
   # Create our very own API object
-  my $api = GuildWars2::API->new( nocache => 1 );
+  my $api = GuildWars2::API->new();
 
   # Open a database connection
   say $log "Opening database connection." if $VERBOSE;
-  my $dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'name'}, $db{'schema'}, $db{'pass'},{mysql_enable_utf8 => 1})
+  my $dbh = DBI->connect('dbi:'.$db{'type'}.':'.$db{'schema'}, $db{'user'}, $db{'pass'},{mysql_enable_utf8 => 1})
     or die "Can't connect: $DBI::errstr\n";
   say $log "\tDatabase connection established." if $VERBOSE;
 
@@ -374,14 +379,14 @@ sub worker
       if ($old_md5) {
         say $log "\tExisting MD5 is $old_md5." if $VERBOSE;
 
-        if ($old_md5 eq $recipe->raw_md5) {
+        if ($old_md5 eq $recipe->md5) {
           # No change
           say $log "MD5 unchanged, will update last_seen_dt." if $VERBOSE;
           push @seen_recipe_ids, $recipe_id;
         } else {
-          say $log "New MD5 is ".$recipe->raw_md5.", recipe data has changed." if $VERBOSE;
-
+          say $log "New MD5 is ".$recipe->md5.", recipe data has changed." if $VERBOSE;
           $change_flag = 1;
+          push @changed_recipe_ids, $recipe_id;
           $updt_q->enqueue($recipe_id);
         }
       } else {
@@ -436,6 +441,7 @@ sub worker
           ,$recipe->md5
           ,$curr_build_id
           ,$curr_build_id
+          ,$curr_build_id
         );
 
         $changed_recipe_cnt++;
@@ -474,10 +480,39 @@ sub worker
 
       # Replace base recipe data
       my $sth_replace_recipe_data = $dbh->prepare('
-          replace into recipe_tb (recipe_id, recipe_type, output_item_id, output_item_qty, unlock_method, craft_time_ms, discipline_rating, discipline_armorsmith, discipline_artificer, discipline_chef, discipline_huntsman, discipline_jeweler, discipline_leatherworker, discipline_tailor, discipline_weaponsmith, ingredient_1_id, ingredient_1_qty, ingredient_2_id, ingredient_2_qty, ingredient_3_id, ingredient_3_qty, ingredient_4_id, ingredient_4_qty, recipe_warnings, recipe_md5, last_seen_build_id, last_seen_dt, last_updt_build_id, last_updt_dt)
+          insert into recipe_tb (recipe_id, recipe_type, output_item_id, output_item_qty, unlock_method, craft_time_ms, discipline_rating, discipline_armorsmith, discipline_artificer, discipline_chef, discipline_huntsman, discipline_jeweler, discipline_leatherworker, discipline_tailor, discipline_weaponsmith, ingredient_1_id, ingredient_1_qty, ingredient_2_id, ingredient_2_qty, ingredient_3_id, ingredient_3_qty, ingredient_4_id, ingredient_4_qty, recipe_warnings, recipe_md5, first_seen_build_id, first_seen_dt, last_seen_build_id, last_seen_dt, last_updt_build_id, last_updt_dt)
           values ' .
-          join(',', ("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, ?, current_timestamp)") x $changed_recipe_cnt )
-        ) or die "Can't prepare statement: $DBI::errstr";
+          join(',', ("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp, ?, current_timestamp, ?, current_timestamp)") x $changed_recipe_cnt )
+        . 'on duplicate key update
+          recipe_type=VALUES(recipe_type)
+         ,output_item_id=VALUES(output_item_id)
+         ,output_item_qty=VALUES(output_item_qty)
+         ,unlock_method=VALUES(unlock_method)
+         ,craft_time_ms=VALUES(craft_time_ms)
+         ,discipline_rating=VALUES(discipline_rating)
+         ,discipline_armorsmith=VALUES(discipline_armorsmith)
+         ,discipline_artificer=VALUES(discipline_artificer)
+         ,discipline_chef=VALUES(discipline_chef)
+         ,discipline_huntsman=VALUES(discipline_huntsman)
+         ,discipline_jeweler=VALUES(discipline_jeweler)
+         ,discipline_leatherworker=VALUES(discipline_leatherworker)
+         ,discipline_tailor=VALUES(discipline_tailor)
+         ,discipline_weaponsmith=VALUES(discipline_weaponsmith)
+         ,ingredient_1_id=VALUES(ingredient_1_id)
+         ,ingredient_1_qty=VALUES(ingredient_1_qty)
+         ,ingredient_2_id=VALUES(ingredient_2_id)
+         ,ingredient_2_qty=VALUES(ingredient_2_qty)
+         ,ingredient_3_id=VALUES(ingredient_3_id)
+         ,ingredient_3_qty=VALUES(ingredient_3_qty)
+         ,ingredient_4_id=VALUES(ingredient_4_id)
+         ,ingredient_4_qty=VALUES(ingredient_4_qty)
+         ,recipe_warnings=VALUES(recipe_warnings)
+         ,recipe_md5=VALUES(recipe_md5)
+         ,last_seen_build_id=VALUES(last_seen_build_id)
+         ,last_seen_dt=current_timestamp
+         ,last_updt_build_id=VALUES(last_updt_build_id)
+         ,last_updt_dt=current_timestamp
+        ') or die "Can't prepare statement: $DBI::errstr";
 
       $sth_replace_recipe_data->execute(@changed_recipe_data) or die "Can't execute statement: $DBI::errstr";
 

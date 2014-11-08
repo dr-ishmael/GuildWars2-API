@@ -31,7 +31,7 @@ This module defines a role for use by multiple object types.
 use GuildWars2::API::Objects::Error;
 use GuildWars2::API::Objects::Item;
 # use GuildWars2::API::Objects::Map;
-# use GuildWars2::API::Objects::Recipe;
+use GuildWars2::API::Objects::Recipe;
 # use GuildWars2::API::Objects::Skin;
 
 use GuildWars2::API::Objects::Linkable;

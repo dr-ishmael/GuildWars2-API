@@ -12,7 +12,6 @@ API returns an error.
 package GuildWars2::API::Objects::Error;
 use namespace::autoclean;
 use Moose;
-use Moose::Util::TypeConstraints;
 
 has 'error'                 => ( is => 'ro', isa => 'Int' );
 has 'product'               => ( is => 'ro', isa => 'Int' );

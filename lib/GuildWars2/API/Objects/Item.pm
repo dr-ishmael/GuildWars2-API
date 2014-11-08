@@ -14,198 +14,13 @@ This subclass of GuildWars2::API::Objects defines the different item objects.
 package GuildWars2::API::Objects::Item;
 use namespace::autoclean;
 use Moose;
-use Moose::Util::TypeConstraints;
+use Moose::Util::TypeConstraints; # required for enum constraints
 
 use GuildWars2::API::Constants;
 use GuildWars2::API::Utils;
 
 with 'GuildWars2::API::Objects::Linkable';
 
-=pod
-
-=head1 CLASSES
-
-=head2 Item
-
-The Item class is the base for all types of items. It includes the Linkable role
-for generating game links, defined in Linkable.pm.
-
-For some types, additional roles are included into this base class which define
-additional attributes.
-
-=head3 Attributes
-
-=over
-
-=item item_id
-
-The internal ID of the item.
-
-=item item_name
-
-The item's name.
-
-=item item_type
-=item item_subtype
-
-The item's primary and secondary types. The primary type determines the
-specific class of object that this module builds. If the primary type has no
-subtypes, then C<item_subtype> will be set to 'null'. Possible combinations:
-
-  B<item_type>
-    B<item_subtype>
-  Armor
-    Boots
-    Coat
-    Gloves
-    Helm
-    HelmAquatic
-    Leggings
-    Shoulders
-  Back
-  Bag
-  Consumable
-    AppearanceChange
-    Booze
-    ContractNpc
-    Food
-    Generic
-    Halloween
-    Immediate
-    Transmutation
-    Unknown
-    Unlock
-    Utility
-  Container
-    Default
-    GiftBox
-  CraftingMaterial
-  Gathering
-    Foraging
-    Logging
-    Mining
-  Gizmo
-    Default
-    RentableContractNpc
-    UnlimitedConsumable
-  MiniPet
-  Tool
-    Salvage
-  Trinket
-    Accessory
-    Amulet
-    Ring
-  Trophy
-  UpgradeComponent
-    Default
-    Gem
-    Rune
-    Sigil
-  Weapon
-    Axe
-    Dagger
-    Focus
-    Greatsword
-    Hammer
-    Harpoon
-    LargeBundle
-    LongBow
-    Mace
-    Pistol
-    Rifle
-    Scepter
-    Shield
-    ShortBow
-    Speargun
-    Staff
-    Sword
-    Torch
-    Toy
-    Trident
-    TwoHandedToy
-    Warhorn
-
-=item description
-
-The item's description.
-
-=item level
-
-The required character level to use the item. I<UpgradeComponent type only>: The
-required item level for attaching this upgrade.
-
-=item rarity
-
-The item's rarity. Possible values:
-
- Junk
- Basic
- Fine
- Masterwork
- Rare
- Exotic
- Ascended
- Legendary
-
-=item vendor_value
-
-The amount of coin received for selling the item to a vendor.
-
-=item game_type_flags
-
-A hash of boolean flags identifying the game types where the item can be
-used. Keys:
-
- Activity
- Dungeon
- Pve
- Pvp
- PvpLobby
- Wvw
-
-=item item_flags
-
-A hash of boolean flags identifying how the item behaves. Keys and descriptions:
-
- Flag               Meaning
- -----------------  ------------------------------------------------------------
- AccountBound       Item is account bound, meaning it cannot be listed on the
-                      Trading Post or attached to a mail message.
- HideSuffix         Item's name does not change to reflect the attached upgrade.
- NoMysticForge      Item cannot be placed in the Mystic Forge.
- NoSalvage          Item cannot be salvaged.
- NoSell             Item cannot be sold to vendors.
- NotUpgradeable     Item does not have an upgrade slot.
- NoUnderwater       Item cannot be used in underwater mode.
- SoulBindOnAcquire  Item is soulbound to the character who acquired it, i.e. it
-                      can only be equipped by that character (account bound
-                      restrictions also apply).
- SoulBindOnUse      Item becomes soulbound when it is equipped.
- Unique             Only 1 copy of this item can be equipped on a character at
-                      a time.
-
-=item item_warnings
-
-If any inconsistencies or unknown values are encountered while parsing the API
-response, a warning message will be returned in this attribute.
-
-=back
-
-=head3 Methods
-
-=over
-
-=item $item->game_link
-
-Encodes and returns a game link using the item's C<item_id>. This link can be
-copied and pasted into the in-game chat window to generate a chat link for the
-item. Hovering on the chat link will produce a tooltip with the item's details,
-and right-clicking the chat link for certain item types will give a shortcut
-menu.
-
-=back
-
-=cut
 
 my @_default_gametypes = qw( Activity Dungeon Pve Pvp PvpLobby Wvw );
 
@@ -252,7 +67,7 @@ my %enum_map = (
   'infusion_type' => [qw( Agony Defense Offense Omni Utility )],
   'infusion_slot_type' => [qw( Defense Offense Utility )],
   'unlock_type' => [qw( BagSlot BankTab CollectibleCapacity Content CraftingRecipe Dye Unknown )],
-  'upgrade_type' => [qw( Jewel Rune Sigil Universal )],
+  'upgrade_type' => [qw( Infusion Jewel Rune Sigil Universal )],
 );
 
 enum 'ItemType',          $enum_map{'item_type'};
@@ -273,8 +88,8 @@ has 'item_type'             => ( is => 'ro', isa => 'ItemType'      );
 has 'level'                 => ( is => 'ro', isa => 'Int'           );
 has 'rarity'                => ( is => 'ro', isa => 'ItemRarity'    );
 has 'vendor_value'          => ( is => 'ro', isa => 'Int'           );
-has 'game_type_flags'       => ( is => 'ro', isa => 'HashRef[Bool]' );
-has 'item_flags'            => ( is => 'ro', isa => 'HashRef[Bool]' );
+has 'game_type_flags'       => ( is => 'ro', isa => 'GuildWars2::API::Objects::Item::GameTypes' );
+has 'item_flags'            => ( is => 'ro', isa => 'GuildWars2::API::Objects::Item::Flags' );
 has 'icon_url'              => ( is => 'ro', isa => 'Str'           );
 has 'description'           => ( is => 'ro', isa => 'Str'           );
 has 'default_skin'          => ( is => 'ro', isa => 'Int'           );
@@ -307,14 +122,15 @@ has 'damage_type'           => ( is => 'ro', isa => 'DamageType'    );
 has 'min_strength'          => ( is => 'ro', isa => 'Int'           );
 has 'max_strength'          => ( is => 'ro', isa => 'Int'           );
 has 'item_warnings'         => ( is => 'ro', isa => 'Str'           );
-has 'md5'               => ( is => 'ro', isa => 'Str', writer => '_set_md5'  );
+has 'md5'                   => ( is => 'ro', isa => 'Str', writer => '_set_md5'  );
 
 around 'BUILDARGS', sub {
+  # $args is a JSON object built from the API response
   my ($orig, $class, $args) = @_;
 
   my $new_args;
 
-  local $" = ','; #" # <-- this is to satisfy syntax highlighting that can't interpret $" as a variable name
+  local $" = ',';
 
   # Explicitly copy attributes from original $args to $new_args
   # Perform some renames and data hygiene on the way
@@ -340,21 +156,23 @@ around 'BUILDARGS', sub {
     }
   }
 
-  # game_types - transform from array[str] to hash[bool]
+  # game_types - every item has at least one game_type defined
   if(my $gametypes = delete $args->{game_types}) {
-    $new_args->{game_type_flags} = { map { $_ => 0 } @_default_gametypes };
     foreach my $g (@$gametypes) {
       $new_args->{item_warnings} .= "Unrecognized game_type [$g]\n" unless in($g, \@_default_gametypes);
-      $new_args->{game_type_flags}->{$g} = 1;
     }
+    $new_args->{game_type_flags} = GuildWars2::API::Objects::Item::GameTypes->new({ map { $_ => 1 } @$gametypes });
   }
 
-  # flags - transform from array[str] to hash[bool]
+  # flags - some items have no flags
   if(my $flags = delete $args->{flags}) {
-    $new_args->{item_flags} = { map { $_ => 0 } @_default_flags };
-    foreach my $f (@$flags) {
-      $new_args->{item_warnings} .= "Unrecognized item flag [$f]\n" unless in($f, \@_default_flags);
-      $new_args->{item_flags}->{$f} = 1;
+    if (scalar @$flags > 0) {
+      foreach my $f (@$flags) {
+        $new_args->{item_warnings} .= "Unrecognized flag [$f]\n" unless in($f, \@_default_flags);
+      }
+      $new_args->{item_flags} = GuildWars2::API::Objects::Item::Flags->new({ map { $_ => 1 } @$flags });
+    } else {
+      $new_args->{item_flags} = GuildWars2::API::Objects::Item::Flags->new();
     }
   }
 
@@ -415,23 +233,6 @@ around 'BUILDARGS', sub {
       }
     }
 
-    # Infusion upgrade flags - returned as a list, only single value is meaningful
-    # Omni infusions are returned as a list of ['Offense', 'Defense', 'Utility']
-    #   so we translate that to a single value
-    # Agony infusions have an empty list and are called '+<x> Agony Infusion'
-    if(my $iuf = delete $details->{infusion_upgrade_flags}) {
-      @$iuf = sort @$iuf;
-      if (@$iuf == 1 && in($iuf->[0], $enum_map{'infusion_slot_type'})) {
-        $new_args->{infusion_type} = $iuf->[0];
-      } elsif (@$iuf == 3 && array_match( $iuf, $enum_map{'infusion_slot_type'})) {
-        $new_args->{infusion_type} = 'Omni';
-      } elsif (@$iuf == 0 && $new_args->{item_name} =~ /Agony Infusion/) {
-        $new_args->{infusion_type} = 'Agony';
-      } elsif (@$iuf > 0) {
-        $new_args->{item_warnings} .= "Unrecognized infusion_upgrade_flags [@$iuf]\n";
-      }
-    }
-
     # Flags - only on UpgradeComponent, returned as list of equipment subtypes
     # The only valid combinations are:
     #   ["Trinket"] = Jewel
@@ -451,6 +252,28 @@ around 'BUILDARGS', sub {
           $new_args->{upgrade_type} = 'Universal';
         } else {
           $new_args->{item_warnings} .= "Unrecognized upgrade flags [@$uf]\n";
+        }
+      }
+    }
+
+    # Infusion upgrade flags - returned as a list, only single value is meaningful
+    # Omni infusions are returned as a list of ['Offense', 'Defense', 'Utility']
+    #   so we translate that to a single value
+    # Agony infusions have an empty list and are called '+<x> Agony Infusion'
+    if(my $iuf = delete $details->{infusion_upgrade_flags}) {
+      if (scalar @$iuf > 0 || $new_args->{item_name} =~ /Agony Infusion/) {
+        # If this attribute is populated, or the item
+        $new_args->{upgrade_type} = 'Infusion' ;
+
+        @$iuf = sort @$iuf;
+        if (@$iuf == 1 && in($iuf->[0], $enum_map{'infusion_slot_type'})) {
+          $new_args->{infusion_type} = $iuf->[0];
+        } elsif (@$iuf == 3 && array_match( $iuf, $enum_map{'infusion_slot_type'})) {
+          $new_args->{infusion_type} = 'Omni';
+        } elsif (@$iuf == 0 && $new_args->{item_name} =~ /Agony Infusion/) {
+          $new_args->{infusion_type} = 'Agony';
+        } elsif (@$iuf > 0) {
+          $new_args->{item_warnings} .= "Unrecognized infusion_upgrade_flags [@$iuf]\n";
         }
       }
     }
@@ -525,295 +348,47 @@ sub _prefix_lookup {
   else { return 'n/a' }
 }
 
-
-=pod
-
-=head2 Item::Infixed
-
-The Item::Infixed role defines the common features of "infixed" item types:
-anything that is Equippable, as well as the UpgradeComponent type.
-
-=head3 Attributes
-
-=over
-
-=item item_attributes
-
-The character attributes that the item modifies, given as a hash with the
-attribute names as the keys and the bonus amount as the values.
-
-=item buff_skill_id
-
-The internal ID of the buff effect that is placed on the character when the
-item is equipped.
-
-=item buff_desc
-
-The description of the buff effect.
-
-=back
-
-=cut
-
-
-=pod
-
-=head2 Item::Equippable
-
-The Item::Equippable role defines the common features of equippable item types:
-Armor, Back, Trinket, and Weapon. It includes the Item::Infixed role.
-
-=head3 Attributes
-
-=over
-
-=item infusion_slot
-
-The type of infusion slot on the item, if it has one.
-
-=item suffix_item_id
-
-The internal ID of the upgrade component attached to the item.
-
-=back
-
-=cut
-
-
-
-=pod
-
-=head1 ROLES
-
-=head2 Item::Armor
-
-The Item::Armor role adds attributes specific to armor items. It includes the
-Item::Equippable role.
-
-=head3 Attributes
-
-=over
-
-=item armor_weight
-
-The weight class of the armor.
-
- Clothing
- Heavy
- Light
- Medium
-
-=item defense
-
-The defense value of the armor.
-
-=item race
-
-The race that can equip the armor. Only applies to L<cultural
-armor|http://wiki.guildwars2.com/wiki/Cultural_armor>.
-
- Asura
- Charr
- Human
- Norn
- Sylvari
-
-=back
-
-=cut
-
-
-
-
-=pod
-
-=head2 Item::Back
-
-The Item::Back role adds attributes specific to back items. It includes the
-Item::Equippable role, but does not add any attributes directly.
-
-=cut
-
-=pod
-
-=head2 Item::Bag
-
-The Item::Bag role adds attributes specific to bag items.
-
-=head3 Attributes
-
-=over
-
-=item bag_size
-
-The number of slots in the bag.
-
-=item invisible
-
-Boolean indicating whether the bag is "invisible," i.e. items in it do not
-appear in vendor lists or the Trading Post and do not move when inventory is
-sorted.
-
-=back
-
-=cut
-
-
-=pod
-
-=head2 Item::Consumable
-
-The Item::Consumable role adds attributes specific to consumable items.
-
-=head3 Attributes
-
-=over
-
-=item food_duration_sec
-
-For Food subtypes, the duration in seconds of the food's Nourishment effect.
-
-=item food_description
-
-For Food subtypes, the description of the food's Nourishment effect.
-
-=item unlock_type
-
-For Unlock subtypes, the item's Unlock sub-subtype.
-
- BagSlot
- BankTab
- CraftingRecipe
- Dye
- Unknown
-
-=item unlock_color_id
-
-For Dye-type unlocks, the internal ID of the color unlocked by the item. This
-can be used to look up the color data in the output of the C<<api->get_colors>>
-method.
-
-=item unlock_recipe_id
-
-For CraftingRecipe-type unlocks, the internal ID of the recipe unlocked by the
-item. This can be used to look up the recipe data with C<<$api-
->get_recipe($recipe_id)>>.
-
-=back
-
-=cut
-
-
-
-=pod
-
-=head2 Item::Tool
-
-The Item::Tool role adds attributes specific to tool items.
-
-=head3 Attributes
-
-=over
-
-=item charges
-
-The number of charges the tool comes with.
-
-=back
-
-=cut
-
-
-
-
-=pod
-
-=head2 Item::Trinket
-
-The Item::Trinket role adds attributes specific to trinket items. It includes
-the Item::Equippable role, but does not add any attributes directly.
-
-=cut
-
-
-=pod
-
-=head2 Item::UpgradeComponent
-
-The Item::UpgradeComponent role adds attributes specific to upgrade
-components. It includes the Item::Infixed role.
-
-=head3 Attributes
-
-=over
-
-=item suffix
-
-The suffix that the upgrade confers when it is attached to an item.
-
-=item infusion_type
-
-For C<item_subtype> of Infusion, the upgrade's infusion type.
-
- Defense
- Offense
- Omni
- Utility
-
-=item rune_bonuses
-
-For C<item_subtype> of Rune, the list of bonuses the rune confers, given as an
-array.
-
-=item applies_to
-
-The type of equipment the upgrade can be applied to.
-
- All
- Armor
- Trinket
- Weapon
-
-=back
-
-=cut
-
-
-
-
-=pod
-
-=head2 Item::Weapon
-
-The Item::Weapon role adds attributes specific to weapon items. It includes
-the Item::Equippable role.
-
-=head3 Attributes
-
-=over
-
-=item damage_type
-
-The weapon's cosmetic damage type.
-
- Fire
- Ice
- Lightning
- Physical
-
-=item min_strength
-=item max_strength
-
-The weapon's minimum and maximum strength ratings.
-
-=item defense
-
-For C<item_subtype> of Shield, the shield's defense value.
-
-=back
-
-=cut
-
+__PACKAGE__->meta->make_immutable;
+
+
+####################
+# Item->GameTypes
+####################
+package GuildWars2::API::Objects::Item::GameTypes;
+use namespace::autoclean;
+use Moose;
+
+has 'Activity'        => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'Dungeon'         => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'Pve'             => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'Pvp'             => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'PvpLobby'        => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'Wvw'             => ( is => 'ro', isa => 'Bool', default => 0 );
+
+__PACKAGE__->meta->make_immutable;
+
+
+####################
+# Item->Flags
+####################
+package GuildWars2::API::Objects::Item::Flags;
+use namespace::autoclean;
+use Moose;
+
+has 'AccountBindOnUse'    => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'AccountBound'        => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'HideSuffix'          => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'MonsterOnly'         => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'NoMysticForge'       => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'NoSalvage'           => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'NoSell'              => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'NotUpgradeable'      => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'NoUnderwater'        => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'SoulbindOnAcquire'   => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'SoulBindOnUse'       => ( is => 'ro', isa => 'Bool', default => 0 );
+has 'Unique'              => ( is => 'ro', isa => 'Bool', default => 0 );
+
+__PACKAGE__->meta->make_immutable;
 
 
 1;
