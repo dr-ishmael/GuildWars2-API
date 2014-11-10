@@ -35,6 +35,9 @@ my $_url_build            = 'v1/build.json';
 #my $_url_maps             = 'v2/maps';
 #my $_url_floors           = 'v2/floors';
 
+my $_url_continents       = 'v1/continents.json';
+my $_url_map_floor        = 'v1/map_floor.json';
+
 #my $_url_wvw_matches      = 'v2/wvw/matches';
 #my $_url_wvw_objectives   = 'v2/wvw/objectives';
 
@@ -638,6 +641,51 @@ sub get_skin_page {
 }
 
 
+sub get_continents {
+  my ($self, $lang) = @_;
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_continents, { "lang" => $lang });
+
+  my %map_tree;
+
+  foreach my $continent_id (keys %{$json->{continents}}) {
+   $map_tree{$continent_id} = GuildWars2::API::Objects::Continent->new( $json->{continents}->{$continent_id} );
+  }
+
+  return %map_tree;
+}
+
+
+sub get_map_floor {
+  my ($self, $continent_id, $floor_id, $lang) = @_;
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  if (! defined $continent_id) {
+    $continent_id = 1;
+  }
+
+  if (! defined $floor_id) {
+    $floor_id = 0;
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_map_floor, { "continent_id" => $continent_id, "floor" => $floor_id, "lang" => $lang });
+
+  my $floor = GuildWars2::API::Objects::Floor->new( $json );
+
+  return $floor;
+}
+
 
 
 sub prefix_lookup {
@@ -722,33 +770,6 @@ sub get_colors {
 }
 
 
-sub get_maps {
-  my ($self, $continent_id, $floor_id, $lang) = @_;
-
-  if (defined $lang) {
-    $lang = $self->_check_language($lang);
-  } else {
-    $lang = $self->{language};
-  }
-
-  if (! defined $continent_id) {
-    $continent_id = 1;
-  }
-
-  if (! defined $floor_id) {
-    $floor_id = 2;
-  }
-
-  my ($raw, $json) = $self->_api_request($_url_map_floor, { "continent_id" => $continent_id, "floor" => $floor_id, "lang" => $lang });
-
-  my %map_tree;
-
-  foreach my $region_id (keys %{$json->{regions}}) {
-   $map_tree{$region_id} = GuildWars2::API::Objects::Region->new( $json->{regions}->{$region_id} );
-  }
-
-  return %map_tree;
-}
 
 1;
 

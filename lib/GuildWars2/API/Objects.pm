@@ -27,11 +27,14 @@ This module defines a role for use by multiple object types.
 
 =cut
 
-# use GuildWars2::API::Objects::Color;
+# /v2 objects
 use GuildWars2::API::Objects::Error;
 use GuildWars2::API::Objects::Item;
-# use GuildWars2::API::Objects::Map;
 use GuildWars2::API::Objects::Recipe;
+
+# /v1 objects
+# use GuildWars2::API::Objects::Color;
+use GuildWars2::API::Objects::Map;
 # use GuildWars2::API::Objects::Skin;
 
 use GuildWars2::API::Objects::Linkable;
