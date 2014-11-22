@@ -33,7 +33,7 @@ use GuildWars2::API::Objects::Item;
 use GuildWars2::API::Objects::Recipe;
 
 # /v1 objects
-# use GuildWars2::API::Objects::Color;
+use GuildWars2::API::Objects::Color;
 use GuildWars2::API::Objects::Map;
 # use GuildWars2::API::Objects::Skin;
 

@@ -50,6 +50,7 @@ my $_url_skins            = 'v2/skins';
 my $_url_recipes          = 'v2/recipes';
 
 #my $_url_colors           = 'v2/colors';
+my $_url_colors           = 'v1/colors.json';
 
 #my $_url_files            = 'v2/files';
 
@@ -687,6 +688,26 @@ sub get_map_floor {
 }
 
 
+sub get_colors {
+  my ($self, $lang) = @_;
+
+  if (defined $lang) {
+    $lang = $self->_check_language($lang);
+  } else {
+    $lang = $self->{language};
+  }
+
+  my ($raw, $json) = $self->_api_request($_url_colors, { lang => $lang } );
+
+  my %color_objs;
+  foreach my $color_id (keys %{$json->{colors}}) {
+    $color_objs{$color_id} = GuildWars2::API::Objects::Color->new( $json->{colors}->{$color_id} );
+  }
+
+  return %color_objs;
+}
+
+
 
 sub prefix_lookup {
   my ($self, $item) = @_;
@@ -747,26 +768,6 @@ sub get_skin {
     my $error = GuildWars2::API::Objects::Error->new($json);
     return $error;
   }
-}
-
-
-sub get_colors {
-  my ($self, $lang) = @_;
-
-  if (defined $lang) {
-    $lang = $self->_check_language($lang);
-  } else {
-    $lang = $self->{language};
-  }
-
-  my ($raw, $json) = $self->_api_request($_url_colors, { lang => $lang } );
-
-  my %color_objs;
-  foreach my $color_id (keys %{$json->{colors}}) {
-    $color_objs{$color_id} = GuildWars2::API::Objects::Color->new( $json->{colors}->{$color_id} );
-  }
-
-  return %color_objs;
 }
 
 
